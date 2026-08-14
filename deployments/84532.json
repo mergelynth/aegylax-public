@@ -4,21 +4,21 @@
   "chainId": 84532,
   "version": "1.3.1",
   "proxy": "0x3530c6f6d5d01be2bfe2f0b364a2260d19621dee",
-  "implementation": "0xbb132a43344ac9eaa35dbee33206540b21a655b3",
-  "lens": "0xf84ce7d03a18cb0ae4c0940cad4e1b0f05e3f58a",
+  "implementation": "0x8a728ebf673e05dedaeba12ac23b0f2494fd2dc7",
+  "lens": "0xb383e9d177476ac3ad6ba3c49c1464e60fc93b8c",
   "confidentialEngine": {
     "kind": "inco-lightning",
-    "address": "0xed953f992e14d0cfd823c4543472b820aeb09a70",
+    "address": "0x1d5cf6b05c3020a617b854ae43231d0488422df0",
     "contract": "IncoConfidentialEngine",
     "pepper": "devnet",
     "executor": "0xB3C06f0Ed967a7E366ba31C67927DDf93d7c1154"
   },
   "libraries": {
-    "Geometry": "0xbbd507f650f01a7e803fb380f6343eacc861f801",
-    "Lobbies": "0xfb5d9614c21e29412e956520b534ddc05d4e014e",
-    "ProtocolRules": "0x0352b3153f7c924b0175af58fda4b2a35b06e45e",
-    "Resolution": "0xc4bcaaa2c437c22de6483d8628ca978ceb983219",
-    "Settlement": "0x54d3b3022697f29c5294aa37bb7fe2b7f50571b5"
+    "Geometry": "0xb34f98bfe85ebac2eb2b64d926c5650ce29b06c2",
+    "Lobbies": "0x67110a33c03ce443c63d5d531e5dc4836d845692",
+    "ProtocolRules": "0xd9d25169675baf0c662afa041cace869b091b605",
+    "Resolution": "0x0556d93f0aa8fd75030c3bb5d38a1cb57146e492",
+    "Settlement": "0xe86a27b8092cb801c2a64fed853d320ee9a0d7c3"
   },
   "owner": "0x68517bAd2fAf39F266A6F048d5899720c7ae61D8",
   "deploymentBlock": 45393997,
@@ -99,7 +99,15 @@
       "at": "2026-08-14T10:03:47.193Z",
       "kind": "upgrade",
       "tx": "0xf4fbb3d652ee5d6272f46dfd6ac811adcf663f12857248bad070ebaa7c409553"
+    },
+    {
+      "version": "1.3.1",
+      "implementation": "0x8a728ebf673e05dedaeba12ac23b0f2494fd2dc7",
+      "block": 45470231,
+      "at": "2026-08-14T11:59:24.773Z",
+      "kind": "upgrade",
+      "tx": "0xf71ebff8cb1ec5e607145022a058cd65b4b55e6dca3b624d678b1cc7da287ef5"
     }
   ],
-  "upgradedAt": "2026-08-14T10:03:47.193Z"
+  "upgradedAt": "2026-08-14T11:59:24.773Z"
 }
