@@ -1,0 +1,34 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+libs = ["node_modules"]
+solc_version = "0.8.30"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 100
+via_ir = true
+# Build info is what `@openzeppelin/upgrades-core` reads to prove an upgrade
+# is storage-layout safe, so it is never optional here (ТЗ §6, §13).
+build_info = true
+extra_output = ["storageLayout"]
+ffi = false
+fs_permissions = [{ access = "read", path = "./out" }]
+
+[profile.ci]
+optimizer_runs = 100
+verbosity = 3
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+
+[rpc_endpoints]
+base_sepolia = "${RPC_URL}"
+base = "${RPC_URL}"
+
+[etherscan]
+base_sepolia = {key = "${ETHERSCAN_API_KEY}", chain = 84532}
+base = {key = "${ETHERSCAN_API_KEY}", chain = 8453}

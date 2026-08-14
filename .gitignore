@@ -1,0 +1,8 @@
+contracts/out
+contracts/cache
+contracts/broadcast
+contracts/node_modules
+contracts/.env
+.env
+.DS_Store
+*.pem
