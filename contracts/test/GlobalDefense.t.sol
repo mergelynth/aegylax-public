@@ -138,6 +138,63 @@ contract GlobalDefenseTest is AegylaxTest {
         game.openGlobalDefense();
     }
 
+    /**
+     * A miss during the join window grows the open draw, not the next pile.
+     *
+     * Opening used to freeze the bounty at mint, so a later miss sat in the
+     * idle pool until the following interval while the trophy still showed
+     * the mint-time figure. The money is the same money; this room should
+     * be playing for it until the threat launches.
+     */
+    function test_draw_missDuringJoinWindow_growsTheOpenBounty() public {
+        uint256 first = _forfeitOnePool();
+        (bytes32 drawId,) = openDrawWhenDue();
+        assertEq(lensOf().getGlobalDefensePool(), 0);
+
+        (GameTypes.Lobby memory beforeDraw, GameTypes.LobbyConfig memory beforeConfig,) = lensOf().getLobby(drawId);
+        assertEq(beforeDraw.rewardPool, first);
+        assertEq(beforeConfig.startPrizePool, first);
+
+        (bytes32 lobbyId, bytes32 attackId) = startedLobby();
+        submitPoint(lobbyId, alice, 100_000_000, 100_000_000);
+        (GameTypes.Lobby memory running,,) = lensOf().getLobby(lobbyId);
+        uint256 second = running.rewardPool;
+        completeAndReveal(lobbyId, attackId);
+
+        assertEq(lensOf().getGlobalDefensePool(), 0, "idle pool stays empty while the draw can still grow");
+        (GameTypes.Lobby memory afterDraw, GameTypes.LobbyConfig memory afterConfig,) = lensOf().getLobby(drawId);
+        assertEq(afterDraw.rewardPool, first + second);
+        assertEq(afterConfig.startPrizePool, first + second);
+    }
+
+    /**
+     * Once the draw's threat is in flight the bounty is frozen: a later miss
+     * waits in the idle pool for the next interval.
+     */
+    function test_draw_missAfterLaunch_waitsForTheNextInterval() public {
+        uint256 first = _forfeitOnePool();
+        (bytes32 drawId,) = openDrawWhenDue();
+        _joinDraw(drawId, alice);
+        _joinDraw(drawId, bob);
+        _closeDraw(drawId);
+        vm.roll(attackOf(lobbyAttack(drawId)).launchBlock);
+        submitPoint(drawId, alice, 100_000_000, 100_000_000);
+
+        (GameTypes.Lobby memory live,,) = lensOf().getLobby(drawId);
+        assertEq(uint8(live.status), uint8(GameTypes.LobbyStatus.ACTIVE));
+        assertEq(live.rewardPool, first);
+
+        (bytes32 lobbyId, bytes32 attackId) = startedLobby();
+        submitPoint(lobbyId, alice, 100_000_000, 100_000_000);
+        (GameTypes.Lobby memory running,,) = lensOf().getLobby(lobbyId);
+        uint256 extra = running.rewardPool;
+        completeAndReveal(lobbyId, attackId);
+
+        assertEq(lensOf().getGlobalDefensePool(), extra);
+        (GameTypes.Lobby memory still,,) = lensOf().getLobby(drawId);
+        assertEq(still.rewardPool, first, "in-flight bounty does not absorb later misses");
+    }
+
     function test_draw_joinIsFree_seatFeeIsRefused() public {
         _forfeitOnePool();
         (bytes32 drawId,) = openDrawWhenDue();

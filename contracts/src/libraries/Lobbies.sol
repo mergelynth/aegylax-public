@@ -34,6 +34,8 @@ library Lobbies {
     error DrawEpochPassed();
     /// `openDraw` before the join window — too early, the interval is still accumulating.
     error DrawNotDue();
+    /// Folding a miss into an open draw would overflow `uint128` bounty fields.
+    error DrawBountyOverflow();
 
     /**
      * An operation, written into storage and bound to its epoch's threat.
@@ -231,11 +233,10 @@ library Lobbies {
          *
          * They do not *open* that far out. A draw opened at epoch 457 for
          * epoch 1000 would sit with the jackpot inside it for hundreds of
-         * epochs, the header reading 0, and nothing accumulating toward the
-         * next one. The join window is a calendar day (at Base's 2s blocks);
-         * if the whole interval is shorter than a day, half of it — so there
-         * is always time to walk in *and* time afterwards to pile prizes
-         * toward the next interval.
+         * epochs. The join window is a calendar day (at Base's 2s blocks);
+         * if the whole interval is shorter than a day, half of it. Misses
+         * *after* mint still grow this same bounty until the threat launches
+         * (`topUpDraw`); only then does the idle pool start the next pile.
          */
         uint64 deadlineBlock = Epochs.epochStart(epochId, p.epochBlocks, $.genesisBlock) - 1;
         if (block.number >= deadlineBlock) revert DrawEpochPassed();
@@ -285,17 +286,66 @@ library Lobbies {
     }
 
     /**
-     * Opens the draw when it is due, and does nothing otherwise.
+     * Opens the draw when it is due, and folds later misses into it while it
+     * has not launched.
      *
      * The protocol has no keeper and no backend. A dedicated `openGlobalDefense`
      * write still exists, but a game that only moves when somebody remembers
      * to click a trophy in the header is not autonomous. Any ordinary write
      * that already happens — creating, joining, scoring — is enough to mint
-     * the lobby once the join window has started.
+     * the lobby once the join window has started, and enough to grow its
+     * bounty when a later miss would otherwise wait for the next interval.
      */
     function maybeOpenDraw(AegylaxStorage.GameStorage storage $) public {
+        topUpDraw($);
         if (!_drawDue($)) return;
         openDraw($);
+    }
+
+    /**
+     * If the next draw is already minted and the threat has not launched,
+     * move the idle pool into that lobby's bounty.
+     *
+     * Opening used to freeze the figure at mint, so a miss during the join
+     * window sat in `globalDefensePool` for the *following* interval while
+     * the trophy still showed the mint-time number. The money is the same
+     * money; the players looking at this room should be playing for it.
+     */
+    function topUpDraw(AegylaxStorage.GameStorage storage $) public {
+        uint256 extra = $.globalDefensePool;
+        if (extra == 0) return;
+
+        bytes32 drawId = _unlaunchedDraw($);
+        if (drawId == bytes32(0)) return;
+
+        $.globalDefensePool = 0;
+        _addToDrawBounty($, drawId, extra);
+        emit IAegylaxEvents.DefensePoolFunded(drawId, extra, 0);
+    }
+
+    function _unlaunchedDraw(AegylaxStorage.GameStorage storage $) private view returns (bytes32 drawId) {
+        uint32 interval = $.globalDefenseEpochInterval;
+        if (interval == 0) return bytes32(0);
+
+        GameTypes.GameParams memory p = $.params;
+        uint32 current = Epochs.epochOf(uint64(block.number), p.epochBlocks, $.genesisBlock);
+        uint32 epochId = (current / interval + 1) * interval;
+        drawId = $.globalDefenseLobby[epochId];
+        if (drawId == bytes32(0)) return bytes32(0);
+        // Freeze once the threat is in flight (ACTIVE) or the room has ended.
+        if ($.lobbies[drawId].status >= GameTypes.LobbyStatus.ACTIVE) return bytes32(0);
+    }
+
+    function _addToDrawBounty(AegylaxStorage.GameStorage storage $, bytes32 drawId, uint256 amount) private {
+        GameTypes.Lobby storage draw = $.lobbies[drawId];
+        uint256 nextReward = uint256(draw.rewardPool) + amount;
+        uint256 nextStart = uint256($.lobbyConfigs[drawId].startPrizePool) + amount;
+        if (nextReward > type(uint128).max || nextStart > type(uint128).max) revert DrawBountyOverflow();
+        draw.rewardPool = uint128(nextReward);
+        // `startPrizePool` is what UNPLAYED `creatorDue` returns to the pool,
+        // and what the header reads as the advertised bounty. Both have to
+        // move with `rewardPool` or a cancel would strand the top-up.
+        $.lobbyConfigs[drawId].startPrizePool = uint128(nextStart);
     }
 
     function _drawDue(AegylaxStorage.GameStorage storage $) private view returns (bool) {

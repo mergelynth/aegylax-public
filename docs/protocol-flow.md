@@ -393,8 +393,11 @@ It mints an operation owned by the contract:
   on Sepolia). There is no smaller jackpot-only cap. The number is frozen on
   the lobby at mint, so a draw opened under an older params version keeps that
   version's ceiling,
-- bounty = the **whole** accumulated pool (drained to zero as it moves, so the
-  pool and the operation never both hold the same wei),
+- bounty = the **whole** accumulated pool at mint (drained to zero as it
+  moves, so the pool and the operation never both hold the same wei),
+  plus any later misses that land while the draw has not launched
+  (`Lobbies.topUpDraw`). Once the threat is in flight the bounty is
+  frozen; later misses wait in the idle pool for the next interval,
 - **entry price 0** — it is already the players' own money, forfeited from
   rounds they lost; charging them to play for it back would be selling them
   their own stake twice,

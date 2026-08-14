@@ -188,7 +188,8 @@ withdraw it.**
 
 Every `globalDefenseEpochInterval` epochs (**1000** on Sepolia) the
 protocol opens its own operation: free, no creator fee, the accumulated
-pool as bounty, cap = live `maxPlayers` (9999), frozen at mint.
+pool as bounty, cap = live `maxPlayers` (9999), frozen at mint. Later
+misses still grow that bounty until the threat launches.
 
 - Intercept → take the pool.
 - Miss → same miss rule, pool comes back.

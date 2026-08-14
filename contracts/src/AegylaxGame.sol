@@ -902,10 +902,10 @@ contract AegylaxGame is
             /*
              * Nobody stopped it, so nobody in this operation earned its pool —
              * and it does not go home to the creator either (ТЗ §17). It goes
-             * to the Global Defense Pool, to be played for by everyone at the
-             * next draw. A bounty that comes back on a miss is a bounty that
-             * costs nothing to advertise, which is what the rule this replaces
-             * was quietly funding.
+             * to the Global Defense Pool. If the next draw is already minted
+             * and has not launched, `maybeOpenDraw` folds that credit into
+             * its bounty in this same transaction so the trophy grows instead
+             * of waiting for the following interval.
              *
              * `rewardPool` is zeroed as the money leaves, so the pool balance
              * and the operations' balances never double-count the same wei —
@@ -930,8 +930,8 @@ contract AegylaxGame is
         );
 
         // A miss that lands inside the join window funds the pool and can
-        // open the draw in the same transaction — nobody has to click a
-        // trophy for the jackpot to become a lobby.
+        // mint the draw — or top up one already open — in the same
+        // transaction. Nobody has to click a trophy for the jackpot to move.
         Lobbies.maybeOpenDraw($);
     }
 
