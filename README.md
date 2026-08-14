@@ -139,7 +139,7 @@ create  →  applications  →  deadline  →  in flight  →  impact  →  reve
 3. **Activate.** Not a button. The first probe or defense moves fees out
    of refundable and turns the entry residual into the reward pool.
 4. **Play.** Probe, then one encrypted Defense Point.
-5. **Score.** Earliest interceptor **on station** (submit + climb) wins
+5. **Score.** Earliest intercept along the path (on station) wins
    and claims. A miss sends the unwon pool to **Global Defense**, not
    back to the creator.
 

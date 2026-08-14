@@ -19,19 +19,21 @@ import {Geometry} from "./Geometry.sol";
  *
  *   intercepted — the threat entered this Defense Point's radius, and the
  *                 interceptor was already on station when it did. Several
- *                 defenders can manage that, and the operation counts as a
- *                 success if any of them do.
- *   winner      — did so with the earliest *actual arrival time*: the block
- *                 the defense was submitted plus the time the interceptor
- *                 spent climbing to its point. That is not the same as
- *                 having clicked first, which is exactly the point — a
- *                 player who commits early to a near point beats one who
- *                 sends a later transaction at a far one.
+ *                 defenders can manage that geometrically. It is not a
+ *                 payout: a point further along the path never meets the
+ *                 live threat once an earlier circle has already stopped it.
+ *   winner      — among those intercepts, the earliest *entry along the
+ *                 trajectory* (`interceptionBlockScaled`). The attack ends
+ *                 there. Climb time is only the on-station gate, not the
+ *                 ranking: a ring of accounts around Earth with short climbs
+ *                 cannot collect a win for covering a path that was already
+ *                 shot down higher up.
  *
- * Exactly equal arrival times leave more than one winner. The protocol has
- * nothing further to rank by, and reaching for transaction order would
- * reward being early to the mempool rather than being right, so an exact
- * tie splits the pool.
+ * Exactly equal entry times leave more than one winner — two radii that
+ * the threat enters at the same moment both actually stopped it. The
+ * protocol has nothing further to rank by, and reaching for transaction
+ * order would reward being early to the mempool rather than being right,
+ * so an exact tie splits the pool.
  */
 library Resolution {
     error InvalidDecryptionProof(uint256 index);
@@ -53,7 +55,7 @@ library Resolution {
         Context memory ctx,
         GameTypes.DecryptionProof[] memory proofs
     ) public {
-        uint256 bestArrival = type(uint256).max;
+        uint256 bestEntry = type(uint256).max;
 
         for (uint256 i = 0; i < list.length; i++) {
             GameTypes.DefenseAttempt storage attempt = list[i];
@@ -86,20 +88,25 @@ library Resolution {
             attempt.interceptY = ev.interceptY;
             attempt.missDistanceWu = ev.missDistanceWu;
 
-            if (ev.intercepted && ev.arrivalBlockScaled < bestArrival) {
-                bestArrival = ev.arrivalBlockScaled;
+            if (ev.intercepted && ev.interceptionBlockScaled < bestEntry) {
+                bestEntry = ev.interceptionBlockScaled;
             }
         }
 
-        if (bestArrival == type(uint256).max) return;
-        outcome.winningArrivalBlockScaled = bestArrival;
+        if (bestEntry == type(uint256).max) return;
 
         for (uint256 i = 0; i < list.length; i++) {
             GameTypes.DefenseAttempt storage attempt = list[i];
-            if (!attempt.intercepted || attempt.arrivalBlockScaled != bestArrival) continue;
+            if (!attempt.intercepted || attempt.interceptionBlockScaled != bestEntry) continue;
 
             attempt.isWinner = true;
             outcome.winners.push(attempt.participant);
+            if (
+                outcome.winningArrivalBlockScaled == 0
+                    || attempt.arrivalBlockScaled < outcome.winningArrivalBlockScaled
+            ) {
+                outcome.winningArrivalBlockScaled = attempt.arrivalBlockScaled;
+            }
             if (
                 outcome.interceptionBlockScaled == 0
                     || attempt.interceptionBlockScaled < outcome.interceptionBlockScaled

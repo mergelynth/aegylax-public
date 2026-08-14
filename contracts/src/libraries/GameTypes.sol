@@ -348,7 +348,8 @@ library GameTypes {
         int256 interceptX;
         int256 interceptY;
         uint256 interceptionBlockScaled;
-        /// Winning defense's arrival time — what ranks defenders (ТЗ §5).
+        /// Winning defense's arrival time (on-station clock). Ranking is by
+        /// interceptionBlockScaled — earliest entry along the path.
         uint256 winningArrivalBlockScaled;
         uint256 interceptRadiusWu;
         address[] winners;

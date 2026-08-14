@@ -321,20 +321,24 @@ to yet, is a miss.
 Two answers come out of resolution, and conflating them is the mistake the
 model exists to rule out:
 
-- `status: 'intercepted'` — this defender stopped the threat. Several can,
-  and the operation is a success if any did.
-- `isWinner` — this defender stopped it with the **earliest actual
-  arrival**, not the earliest transaction and not the highest intercept
-  on the path. A near point sent later still beats a far point that was
-  clicked first, if it is on station sooner.
+- `status: 'intercepted'` — the original chord entered this radius while
+  the interceptor was on station. Several can record that geometrically.
+  It is not a payout: a point further along the path never meets the
+  *live* threat once an earlier circle has already stopped it.
+- `isWinner` — this defender stopped it with the **earliest entry along
+  the trajectory**, not the earliest transaction and not the shortest
+  climb. A ring of accounts around Earth cannot collect a win for covering
+  a path that was already shot down higher up. Climb time is only the
+  on-station gate: still climbing when the threat enters your radius is a
+  miss.
 
 The emulator and the chain use the same ranking. The radius is
 `DEFENSE_INTERCEPTION_RADIUS` (in sectors) times `sectorSpanKm`,
 protocol-owned, and the same number is used by the frontend's drawing,
 the private computation and the contract's verification. Exactly equal
-arrivals leave more than one winner: the protocol has no further
-ordering to appeal to, and submission order would reward being early to
-click rather than being right.
+entry times leave more than one winner: two radii the threat enters at
+the same moment both actually stopped it, and submission order would
+reward being early to click rather than being right.
 
 ## Economics (`game/economics.ts`)
 

@@ -152,12 +152,14 @@ Two conditions, and both are times rather than distances:
    point, at `defenseSpeedKmPerBlock`.
 
 Among the defenders who satisfy both, the winner is the one with the
-**earliest actual arrival** — not the earliest transaction, and not the
-highest intercept on the path. A player who commits early to a near point
-beats one who sends a later transaction at a far one; a near point sent
-later still beats a far point clicked first if it is on station sooner.
-Exactly equal arrivals split the pool because the protocol has nothing
-further to rank by. The emulator uses the same rule.
+**earliest entry along the trajectory** — the moment the live threat
+first crossed a radius. Climb time is only the on-station gate: a
+shorter climb nearer Earth does not beat an intercept that already ended
+the attack. A farm of wallets tiling interceptors down the path (or
+around the planet) cannot all get paid for covering a chord that was
+already shot down. Exactly equal entry times split the pool because two
+radii the threat enters at the same moment both actually stopped it. The
+emulator uses the same rule.
 
 An emergent consequence worth knowing: a point very close to the launch
 edge is nearly undefendable, because an interceptor cannot climb that far

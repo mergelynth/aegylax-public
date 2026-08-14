@@ -119,16 +119,17 @@ contract InterceptionTest is AegylaxTest {
     }
 
     /**
-     * ТЗ §5, the ranking rule: several defenders may intercept, and the one
-     * with the earliest *arrival* wins — not the one whose transaction
-     * happened to land first.
+     * Ranking: several defenders may intercept the original chord, and the
+     * one whose radius the *live* threat enters first wins — not the one
+     * whose interceptor finished climbing first.
      *
-     * Bob submits second, but picks a point much closer to Earth, so his
-     * interceptor is on station before Alice's is. The order of the UI
-     * actions and the order of the arrivals disagree, and the protocol
-     * follows the arrivals.
+     * Alice submits first and meets the threat high on the path. Bob
+     * submits one block later, closer to Earth, so his interceptor is on
+     * station sooner. Climb-arrival would pick Bob; the protocol follows
+     * the trajectory and picks Alice. Bob's circle covering a path that
+     * was already shot down is not a second win.
      */
-    function test_winner_isTheEarliestArrival_notTheEarliestTransaction() public {
+    function test_winner_isTheEarliestEntry_notTheEarliestArrival() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
 
         // Alice: high up along the trajectory, submitted first.
@@ -146,11 +147,12 @@ contract InterceptionTest is AegylaxTest {
         assertTrue(attempts[0].intercepted);
         assertTrue(attempts[1].intercepted);
         assertLt(attempts[1].arrivalBlockScaled, attempts[0].arrivalBlockScaled, "bob's interceptor arrives first");
+        assertLt(attempts[0].interceptionBlockScaled, attempts[1].interceptionBlockScaled, "alice meets the threat first");
 
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
         assertEq(outcome.winners.length, 1);
-        assertEq(outcome.winners[0], bob);
-        assertEq(outcome.winningArrivalBlockScaled, attempts[1].arrivalBlockScaled);
+        assertEq(outcome.winners[0], alice);
+        assertEq(outcome.winningArrivalBlockScaled, attempts[0].arrivalBlockScaled);
     }
 
     /// Identical arrivals have nothing left to rank by, so the pool splits.
@@ -201,12 +203,12 @@ contract InterceptionTest is AegylaxTest {
             if (attempts[i].isWinner) winners++;
         }
         assertEq(interceptors, 3, "all three points sit on the path");
-        assertEq(winners, 1, "only the earliest arrival takes it");
+        assertEq(winners, 1, "only the first entry along the path takes it");
 
-        // Carol placed the point nearest Earth, so her interceptor is on
-        // station first even though everybody submitted in the same block.
+        // Alice placed the point nearest launch, so the threat enters her
+        // radius first even though everybody submitted in the same block.
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
-        assertEq(outcome.winners[0], carol);
+        assertEq(outcome.winners[0], alice);
     }
 
     function test_noDefenders_resolvesAsAMiss() public {

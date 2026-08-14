@@ -200,8 +200,10 @@ library Geometry {
      * when the threat entered the point's radius, and when the interceptor
      * placed there actually arrived. A defense counts only if the second is
      * not after the first — "the defense must be in place before the attack
-     * passes through that area" — and the winner is ranked by the second,
-     * never by the order the transactions happened to land in.
+     * passes through that area". Ranking among those hits is by the first
+     * (earliest entry along the path). Arrival is the on-station gate, not
+     * the prize: a shorter climb further down the path does not beat an
+     * intercept that already ended the threat.
      */
     function evaluateDefense(
         World memory w,
