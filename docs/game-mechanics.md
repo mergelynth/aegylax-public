@@ -240,6 +240,20 @@ the privacy boundary in the UI: it renders what the private computation
 already returned, never triangulates several probes into a point, and
 never produces anything opaque enough to read as a position.
 
+### The recon clock (`reconNowPoint`)
+
+While the attack is in flight and a fused estimate exists, the map also
+draws a **red mark** along the corridor — where that bearing says the
+threat *would* be now. It is not the sealed trajectory (ТЗ §3.3). The
+path wanders inside the remaining uncertainty (`reconNowPoint`, seeded
+from the estimate so a reload does not invent a new flight), interpolates
+between blocks the same way the countdown does, and pulses a short local
+ping. After reveal the mark is gone; the real chord is `AttackReveal`.
+
+Switching operations drops the previous lobby, attack and reveal before
+the next read lands, so the scene never keeps the last round's countdown
+or trajectory under a new URL.
+
 ### Where probes live
 
 Reconnaissance is bounded at both ends by the attack itself: it opens when
@@ -458,7 +472,9 @@ every viewport size rather than at one.
 It holds three bubbles and two buttons, and deliberately nothing else —
 no operation phase, no player phase, no epoch, no prose:
 
-- **Attack** — the countdown, or ATTACK ACTIVE, or IMPACT.
+- **Attack** — the countdown, or ATTACK ACTIVE, or IMPACT; after the
+  window, TARGET REACHED once `Lobby.outcome` is known, RESULT SEALED only
+  after `getAttackReveal` has come back empty.
 - **Recon** — probes ready, probes spent.
 - **Defense** — NOT SET, or the coordinate, or LOCKED once submitted.
 

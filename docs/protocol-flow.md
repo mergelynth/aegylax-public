@@ -272,6 +272,13 @@ operation already published simply scores this team.
 > one wrong. A trajectory drawn to the wrong endpoint is not a partial answer,
 > it is a false one.
 >
+> **What the banner says while that read is in flight.** `intercepted === null`
+> used to mean both "still sealed" and "we have not asked yet". On a reload of
+> an already-scored round the second is true for the whole `getAttackReveal`
+> round-trip, and the countdown announced RESULT SEALED — a false invitation to
+> reveal. It now takes `Lobby.outcome` from `getLobby` as soon as that lands,
+> and RESULT SEALED only after `reveal.loaded` with `scored` still false.
+>
 > The reveal is also de-duplicated in `useReveal`: the automatic keeper and the
 > manual button share one in-flight promise, so pressing Reveal while the keeper
 > is already part-way through no longer starts a second run — which is how one
