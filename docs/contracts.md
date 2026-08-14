@@ -11,7 +11,8 @@ AEGYLAX runs on two chains at once, and the split is the whole design:
   player's browser before it ever reaches a transaction argument.
 
 Nothing in the frontend decides a game rule, and nothing in the game
-contract can read an attack before it lands.
+contract can read an attack before it lands. Short jury-facing split:
+[INCO_INTEGRATION.md](INCO_INTEGRATION.md).
 
 ## Contracts
 

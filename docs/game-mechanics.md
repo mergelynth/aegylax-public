@@ -243,15 +243,28 @@ what the private computation already returned, never triangulates several
 probes into a point, and never produces anything opaque enough to read as
 a position.
 
+The picture on the map (`buildReconEstimate`) is three layers of the
+same fused reading, not three guesses:
+
+- the **cloud** is still a pizza from the launch — every direction the
+  remaining θ-error plus the unknown impact offset still admit. Wide on
+  purpose: this is cover, not a place to sit.
+- the **core** (and, from the second probe, the **trail**) is a kilometre
+  corridor along the estimated inbound. A 46° fan opened at the launch
+  edge covers half the board; a band of a couple of sectors is a search
+  that still cannot be covered by one intercept radius (floor 0.45
+  sectors vs radius 0.14). Fusion cannot pin θ: the floor sits at or
+  above the bias window, so the bright middle converges on `θ + ε`.
+
 ### The recon clock (`reconNowPoint`)
 
 While the attack is in flight and a fused estimate exists, the map also
 draws a **red mark** along the corridor — where that bearing says the
 threat *would* be now. It is not the sealed trajectory (ТЗ §3.3). The
-path wanders inside the remaining uncertainty (`reconNowPoint`, seeded
-from the estimate so a reload does not invent a new flight), interpolates
-between blocks the same way the countdown does, and pulses a short local
-ping. After reveal the mark is gone; the real chord is `AttackReveal`.
+path wanders inside the core (`reconNowPoint`, seeded from the estimate
+so a reload does not invent a new flight), interpolates between blocks
+the same way the countdown does, and pulses a short local ping. After
+reveal the mark is gone; the real chord is `AttackReveal`.
 
 Switching operations drops the previous lobby, attack and reveal before
 the next read lands, so the scene never keeps the last round's countdown

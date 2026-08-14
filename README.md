@@ -230,6 +230,7 @@ write.
 
 | | |
 | --- | --- |
+| [docs/INCO_INTEGRATION.md](docs/INCO_INTEGRATION.md) | Why Inco, what is private, Base vs Inco, how the round uses ciphertext |
 | [docs/contracts.md](docs/contracts.md) | On-chain protocol and Inco |
 | [docs/protocol-flow.md](docs/protocol-flow.md) | Money, endings, jackpot |
 | [docs/game-mechanics.md](docs/game-mechanics.md) | Playfield, probes, defense |
