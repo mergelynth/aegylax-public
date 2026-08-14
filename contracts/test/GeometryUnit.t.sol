@@ -156,6 +156,29 @@ contract GeometryUnitTest is Test {
         assertFalse(entered);
     }
 
+    function test_snapshotAtArrivalIsTheIntercept() public pure {
+        Geometry.World memory w = world();
+        GameTypes.Trajectory memory traj;
+        traj.startX = 0;
+        traj.startY = w.heightWu / 2;
+        traj.targetX = w.widthWu;
+        traj.targetY = w.heightWu / 2;
+        Geometry.Point memory p = Geometry.Point(w.widthWu / 2, w.heightWu / 2);
+        uint256 radius = Geometry.interceptRadiusWu(w, 140);
+
+        Geometry.DefenseEvaluation memory early =
+            Geometry.evaluateDefense(w, traj, p, radius, 1000, 150, 1000, 250);
+        assertFalse(early.intercepted, "submit at launch arrives before the threat");
+
+        uint256 climb = Geometry.arrivalBlockScaled(w, p, 0, 250);
+        uint256 passScaled = uint256(1000) * GameTypes.TIME_SCALE + (uint256(150) * GameTypes.TIME_SCALE) / 2;
+        uint64 submitAt = uint64((passScaled - climb) / GameTypes.TIME_SCALE);
+        Geometry.DefenseEvaluation memory timed =
+            Geometry.evaluateDefense(w, traj, p, radius, 1000, 150, submitAt, 250);
+        assertTrue(timed.intercepted, "timed arrival meets the threat");
+        assertEq(timed.interceptionBlockScaled, timed.arrivalBlockScaled);
+    }
+
     function test_arrivalTimeGrowsWithAltitude() public pure {
         Geometry.World memory w = world();
 

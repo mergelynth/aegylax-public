@@ -92,7 +92,7 @@ library GameTypes {
         uint16 gridRows;
         /// Side of one sector, in km — the playfield's only declared scale.
         uint32 sectorSpanKm;
-        /// DEFENSE_INTERCEPTION_RADIUS in thousandths of a sector (320 = 0.32).
+        /// DEFENSE_INTERCEPTION_RADIUS in thousandths of a sector (140 = 0.14).
         uint32 interceptRadiusMilliSectors;
         /// Blocks per epoch. An attack launches on one boundary and impacts on the next,
         /// so this is also the full flight time T_attack (ТЗ §4).
@@ -348,8 +348,7 @@ library GameTypes {
         int256 interceptX;
         int256 interceptY;
         uint256 interceptionBlockScaled;
-        /// Winning defense's arrival time (on-station clock). Ranking is by
-        /// interceptionBlockScaled — earliest entry along the path.
+        /// Winning defense's arrival time — the ranking key among snapshot hits.
         uint256 winningArrivalBlockScaled;
         uint256 interceptRadiusWu;
         address[] winners;

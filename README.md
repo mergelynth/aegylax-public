@@ -138,9 +138,11 @@ create  →  applications  →  deadline  →  in flight  →  impact  →  reve
    applications are open.
 3. **Activate.** Not a button. The first probe or defense moves fees out
    of refundable and turns the entry residual into the reward pool.
-4. **Play.** Probe, then one encrypted Defense Point.
-5. **Score.** Earliest intercept along the path (on station) wins
-   and claims. A miss sends the unwon pool to **Global Defense**, not
+4. **Play.** Probe (8-block delay, one in flight per wallet; cone floor 12°),
+   then one encrypted Defense Point. Recon closes after that submit.
+5. **Score.** Snapshot at arrival (`submit + climb`): threat still in flight
+   and inside the 0.14-sector radius *then*. Earliest valid arrival wins;
+   exact ties split. A miss sends the unwon pool to **Global Defense**, not
    back to the creator.
 
 Nobody needs to be online for an attack to launch or land. Keepers are
@@ -159,8 +161,8 @@ paid.
 
 **Sepolia ranges** (`deployments/84532.json`): 2–9999 players, entry
 0.0005–0.1 ETH, min pool 0.001 ETH, creator fee ≤15%, probe 0.0002 ETH,
-seat fee 0.0005 ETH, epoch 120 blocks (~4 min at 2 s). The seat fee is
-the **only** thing the owner may withdraw.
+seat fee 0.0005 ETH, epoch 120 blocks (~4 min at 2 s), intercept radius
+0.14 sectors. The seat fee is the **only** thing the owner may withdraw.
 
 ---
 

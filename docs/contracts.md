@@ -143,23 +143,24 @@ from a script — worth keeping in step, since it is the same protocol.
 
 ## Interception and the winner
 
-Two conditions, and both are times rather than distances:
+Two conditions, and both are times rather than a chord test:
 
-1. the threat **enters** the interception radius around the Defense
-   Point at some point during its flight;
-2. the interceptor **is already there** when it does. Arrival is the
-   submission block plus the time spent climbing from the surface to the
-   point, at `defenseSpeedKmPerBlock`.
+1. the interceptor **arrives** (submit + climb) while the threat is still
+   in flight;
+2. at that instant, `distance(point, trajectory[arrival])` is inside the
+   interception radius (`0.14` sectors).
 
-Among the defenders who satisfy both, the winner is the one with the
-**earliest entry along the trajectory** — the moment the live threat
-first crossed a radius. Climb time is only the on-station gate: a
-shorter climb nearer Earth does not beat an intercept that already ended
-the attack. A farm of wallets tiling interceptors down the path (or
-around the planet) cannot all get paid for covering a chord that was
-already shot down. Exactly equal entry times split the pool because two
-radii the threat enters at the same moment both actually stopped it. The
-emulator uses the same rule.
+Among those snapshot hits, the winner is the **earliest arrival**. A
+farm of wallets tiling a static line is twenty independent bets, not a
+wall: at each arrival the threat is in one place. Exact arrival ties
+split the pool. The emulator uses the same rule (`resolveDefense` matches
+`Geometry.evaluateDefense`). There is no "highest intercept" ranking.
+
+```
+arrival = submitBlock + climbTime
+valid   = arrival < impactBlock
+      AND distance(point, trajectory[arrival]) <= radius
+```
 
 An emergent consequence worth knowing: a point very close to the launch
 edge is nearly undefendable, because an interceptor cannot climb that far
@@ -179,11 +180,11 @@ The Global Defense **interval** is a separate storage field
 Solidity (`1 days / 2` two-second blocks) and the frontend prefer 24 hours,
 or half the interval if that is shorter.
 
-### Live Base Sepolia (params version 3)
+### Live Base Sepolia (params version 4)
 
 | | |
 | --- | --- |
-| Grid | 10 × 5, 1000 km/sector, intercept 0.32 sectors |
+| Grid | 10 × 5, 1000 km/sector, intercept 0.14 sectors |
 | Epoch | 120 blocks (~4 min at 2s) |
 | Players | 2–9999 |
 | Entry | 0.0005–0.1 ETH |
@@ -294,20 +295,22 @@ alice  point (6677, 1942) km  miss 34 km   arrival 45354670.6  INTERCEPTED  <- W
 bob    point (7710, 1482) km  miss 525 km  arrival 45354672.4  missed
 ```
 
-Worth reading closely: the threat entered Alice's radius at block
-45354692.5, and her interceptor was on station from 45354670.6 — the ТЗ §5
-condition, satisfied on real data. Bob's fused bearing was *closer* to the
-truth than Alice's, and he still missed: he aimed nearer to Earth, where the
-trajectory has diverged from the radial bearing a probe reports, while she
-aimed high, where it has not. That is the geometry teaching a real lesson
-about how to play, not a quirk of the test.
+Worth reading closely: at Alice's arrival the threat was 34 km away — inside
+the radius — so the snapshot hit. At Bob's arrival it was 525 km away, so
+covering a different part of the chord did not count. Earliest valid arrival
+won. Bob's fused bearing was *closer* to the truth than Alice's, and he still
+missed: he aimed nearer to Earth, where the trajectory has diverged from the
+radial bearing a probe reports, while she aimed high, where it has not. That
+is the geometry teaching a real lesson about how to play, not a quirk of the
+test.
 
 ### Local
 
 `contracts/test/` covers the lifecycle, fees and refunds, probe
 allowances, commitment/reveal (including invented trajectories and
 invented Defense Points), hidden-data availability, timing windows,
-interception, multiple defenders, ranking by arrival, claims and double
+interception (snapshot at arrival), multiple defenders, ranking by earliest
+arrival, claims and double
 claims, reentrancy, access control, pausing, upgrades and storage
 preservation, plus fuzzed geometry invariants — that a launch point is
 always on the board's edge, that a trajectory never clips Earth, and that

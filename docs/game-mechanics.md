@@ -235,10 +235,13 @@ estimate no probe produced.
 The grid paints those weights as translucent patches and blurs them past
 the cell size, so what the player sees is a continuous field with a
 direction rather than a set of coloured squares. Weak intelligence is a
-broad, soft haze; strong intelligence is a tight, brighter wedge. This is
-the privacy boundary in the UI: it renders what the private computation
-already returned, never triangulates several probes into a point, and
-never produces anything opaque enough to read as a position.
+broad, soft haze; strong intelligence is a tight, brighter wedge. Extra
+probes sharpen the band; they never erase the 12° floor, and the bright
+centre is **not** a guaranteed trajectory. Reveal is the only thing that
+draws the real chord. This is the privacy boundary in the UI: it renders
+what the private computation already returned, never triangulates several
+probes into a point, and never produces anything opaque enough to read as
+a position.
 
 ### The recon clock (`reconNowPoint`)
 
@@ -301,44 +304,41 @@ not by validating coordinates afterwards. The point can be moved freely
 until Send Defense; after that it is locked forever, and the emulator
 rejects any second `submitDefense` from the same participant.
 
-### Interception is a time, not a distance
+### Interception is a snapshot, not a wall
 
-The rule is explicitly **not** a point-to-line proximity test. Two
-conditions, and both are times:
+The rule is explicitly **not** "the chord passed through the circle."
+Two conditions, and both are times:
 
-1. **when** the threat enters the interception radius around the Defense
-   Point (`firstEntryIntoCircle` — the nearer root of
-   `|P(t) - defensePoint|² = radius²` while the threat is actually flying);
-2. whether the interceptor is **already there** when it does. Arrival is
-   the submit block plus the climb from Earth's surface to the point, at
-   `defenseSpeedKmPerBlock`.
+1. **arrival** — submit block plus the climb from Earth's surface to the
+   Defense Point, at `defenseSpeedKmPerBlock`;
+2. **where the threat is at that instant** — `distance(point,
+   trajectory[arrival]) <= interceptionRadius`. Arrival must still be
+   during the flight (`arrival < impact`).
 
-A `t` outside `[0, 1]` never happened while the threat was flying, which
-is why "before impact" needs no separate check: `t <= 1` *is* it. A
-point that the threat enters, but that the interceptor has not climbed
-to yet, is a miss.
+A static line of points covering the path is twenty independent bets on
+different moments, not a guaranteed intercept. The threat occupies one
+place at each arrival. Radius is `0.14` sectors.
 
-Two answers come out of resolution, and conflating them is the mistake the
-model exists to rule out:
+Two answers come out of resolution:
 
-- `status: 'intercepted'` — the original chord entered this radius while
-  the interceptor was on station. Several can record that geometrically.
-  It is not a payout: a point further along the path never meets the
-  *live* threat once an earlier circle has already stopped it.
-- `isWinner` — this defender stopped it with the **earliest entry along
-  the trajectory**, not the earliest transaction and not the shortest
-  climb. A ring of accounts around Earth cannot collect a win for covering
-  a path that was already shot down higher up. Climb time is only the
-  on-station gate: still climbing when the threat enters your radius is a
-  miss.
+- `status: 'intercepted'` — at this interceptor's arrival the threat was
+  inside the radius. Covering the chord at some other time is a miss
+  (too early or too late).
+- `isWinner` — among those snapshot hits, the **earliest arrival**.
+  Exact arrival ties split the pool.
+
+After reveal the Result HUD says YOU HIT only for `isWinner`. A later
+snapshot hit, or a circle the threat passed at the wrong time, is TOO LATE
+or TOO EARLY — not a second winner. WINNERS is `outcome.winners.length`.
+
+The player is choosing a position **and** a moment of arrival, not a
+circle that covers the path. Recon → forecast → risk → submit → climb →
+arrival → interception.
 
 The emulator and the chain use the same ranking. The radius is
 `DEFENSE_INTERCEPTION_RADIUS` (in sectors) times `sectorSpanKm`,
 protocol-owned, and the same number is used by the frontend's drawing,
-the private computation and the contract's verification. Exactly equal
-entry times leave more than one winner: two radii the threat enters at
-the same moment both actually stopped it, and submission order would
-reward being early to click rather than being right.
+the private computation and the contract's verification.
 
 ## Economics (`game/economics.ts`)
 
@@ -480,7 +480,9 @@ no operation phase, no player phase, no epoch, no prose:
   window, TARGET REACHED once `Lobby.outcome` is known, RESULT SEALED only
   after `getAttackReveal` has come back empty.
 - **Recon** — probes ready, probes spent.
-- **Defense** — NOT SET, or the coordinate, or LOCKED once submitted.
+- **Defense** — the coordinate, plus **Estimated arrival: Block N** once a
+  point exists (submit + climb against the fused corridor, never the sealed
+  trajectory). LOCKED after submit; the arrival block is then fixed.
 
 Its hierarchy is fixed: **Submit Defense** is a large, lit bubble — the
 most prominent control on the screen, and inactive until a Defense Point

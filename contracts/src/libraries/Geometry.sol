@@ -29,10 +29,13 @@ import {Trig} from "./Trig.sol";
  * trigonometry ever has to run over encrypted data. The trigonometry runs
  * once, here, on the decrypted-and-attested angles at reveal time.
  *
- * Interception is a *time*, never a proximity test (ТЗ §5): the threat is a
- * point travelling P_start -> P_target over the flight, a defense succeeds
- * when that point enters the interception radius around the Defense Point,
- * and the answer is the block at which it did.
+ * Interception is a *spacetime* test (ТЗ §5): the threat is a point
+ * travelling P_start -> P_target over the flight. A defense succeeds only
+ * if, at the interceptor's *arrival* (submit + climb), that moving point
+ * sits inside the radius. Being on the chord at some other time is not
+ * enough — a wall of points covering the path still miss unless each one
+ * arrives at the moment the threat is actually there. Ranking among those
+ * hits is the earliest arrival. An exact arrival tie splits the pool.
  */
 library Geometry {
     using Math for uint256;
@@ -68,7 +71,7 @@ library Geometry {
     /// One defense evaluated against one trajectory.
     struct DefenseEvaluation {
         bool intercepted;
-        /// Block ×1e6 at which the threat entered this point's radius.
+        /// Block ×1e6 of the intercept — equal to arrival when it hit.
         uint256 interceptionBlockScaled;
         int256 interceptX;
         int256 interceptY;
@@ -196,14 +199,11 @@ library Geometry {
     /**
      * One Defense Point against one trajectory (ТЗ §5).
      *
-     * Two independent facts come out of this, and the caller needs both:
-     * when the threat entered the point's radius, and when the interceptor
-     * placed there actually arrived. A defense counts only if the second is
-     * not after the first — "the defense must be in place before the attack
-     * passes through that area". Ranking among those hits is by the first
-     * (earliest entry along the path). Arrival is the on-station gate, not
-     * the prize: a shorter climb further down the path does not beat an
-     * intercept that already ended the threat.
+     * The interceptor climbs from the surface after submit. The threat is
+     * sampled at that arrival instant — not tested against the whole chord.
+     * `intercepted` iff arrival is still during the flight and the moving
+     * point is inside the radius *then*. Ranking (in Resolution) is by that
+     * arrival, so a shorter climb is a different bet, not a better cover.
      */
     function evaluateDefense(
         World memory w,
@@ -219,20 +219,43 @@ library Geometry {
         Point memory b = Point(traj.targetX, traj.targetY);
 
         ev.arrivalBlockScaled = arrivalBlockScaled(w, p, submittedAtBlock, defenseSpeedKmPerBlock);
-        ev.missDistanceWu = closestApproachDistance(p, a, b);
 
-        (bool entered, uint256 tScaled, int256 ix, int256 iy) = firstEntry(a, b, p, radiusWu);
-        if (!entered) {
-            return ev;
+        uint256 launchScaled = uint256(launchBlock) * TIME_SCALE;
+        uint256 impactScaled = uint256(uint256(launchBlock) + uint256(flightBlocks)) * TIME_SCALE;
+        bool inFlight = flightBlocks > 0 && ev.arrivalBlockScaled >= launchScaled && ev.arrivalBlockScaled < impactScaled;
+
+        if (inFlight) {
+            uint256 tScaled = (ev.arrivalBlockScaled - launchScaled) / uint256(flightBlocks);
+            if (tScaled > TIME_SCALE) tScaled = TIME_SCALE;
+            Point memory threat = pointAlong(a, b, tScaled);
+            ev.missDistanceWu = distance(p, threat);
+            if (ev.missDistanceWu <= radiusWu) {
+                ev.intercepted = true;
+                ev.interceptX = threat.x;
+                ev.interceptY = threat.y;
+                ev.interceptionBlockScaled = ev.arrivalBlockScaled;
+                return ev;
+            }
+        } else {
+            ev.missDistanceWu = closestApproachDistance(p, a, b);
         }
 
-        uint256 entryScaled = uint256(launchBlock) * TIME_SCALE + (tScaled * uint256(flightBlocks));
-        ev.interceptionBlockScaled = entryScaled;
-        ev.interceptX = ix;
-        ev.interceptY = iy;
-        // ТЗ §5: in the radius is not enough — the interceptor has to be
-        // there before the threat passes through.
-        ev.intercepted = ev.arrivalBlockScaled <= entryScaled;
+        // Miss classification only — payout already returned above. A chord
+        // that would have passed through this circle is TOO EARLY / TOO LATE,
+        // not a spatial miss, once the snapshot has failed.
+        (bool entered, uint256 entryT, int256 ex, int256 ey) = firstEntry(a, b, p, radiusWu);
+        if (entered && flightBlocks > 0) {
+            ev.interceptionBlockScaled = launchScaled + (entryT * uint256(flightBlocks)) / TIME_SCALE;
+            ev.interceptX = ex;
+            ev.interceptY = ey;
+        }
+    }
+
+    function pointAlong(Point memory a, Point memory b, uint256 tScaled) internal pure returns (Point memory) {
+        return Point(
+            a.x + ((b.x - a.x) * int256(tScaled)) / int256(TIME_SCALE),
+            a.y + ((b.y - a.y) * int256(tScaled)) / int256(TIME_SCALE)
+        );
     }
 
     /**
@@ -240,9 +263,8 @@ library Geometry {
      *
      * It launches from the surface directly beneath its Defense Point and
      * climbs radially, so the distance it covers is the point's altitude
-     * above Earth. Ranking by this — submission block plus flight time — is
-     * what ТЗ §5 asks for: a player who commits early to a near point beats
-     * one who clicks first at a far one.
+     * above Earth. Arrival is submit plus that climb — the instant the
+     * snapshot test uses, and the ranking key among valid intercepts.
      */
     function arrivalBlockScaled(World memory w, Point memory p, uint64 submittedAtBlock, uint32 defenseSpeedKmPerBlock)
         internal
@@ -262,12 +284,9 @@ library Geometry {
     }
 
     /**
-     * The moment a threat travelling `a -> b` first enters the circle of
-     * `radius` around `center`, as a 0..1e6 fraction of the flight.
-     *
-     * The smaller root of |P(t) - center|² = radius². A root outside [0, 1]
-     * is not an interception: the threat either had already landed or never
-     * got there while it was flying.
+     * When a moving threat first crosses a circle. Not the intercept test —
+     * that is the snapshot at arrival. Kept so a miss can be told apart from
+     * "wrong time on a path that would have passed through".
      */
     function firstEntry(Point memory a, Point memory b, Point memory center, uint256 radius)
         internal

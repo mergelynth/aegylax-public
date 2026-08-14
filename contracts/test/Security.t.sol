@@ -37,8 +37,7 @@ contract SecurityTest is AegylaxTest {
     /// An upgrade in the middle of a live operation must not disturb it.
     function test_upgrade_preservesEveryOperationInFlight() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
 
         (GameTypes.Lobby memory before,,) = lensOf().getLobby(lobbyId);
 
@@ -148,8 +147,7 @@ contract SecurityTest is AegylaxTest {
     /// Pausing stops new play without trapping anything already committed.
     function test_pause_blocksNewActionsButNotSettlement() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
 
         vm.prank(owner);
         game.setPaused(true);

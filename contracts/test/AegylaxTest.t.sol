@@ -75,7 +75,7 @@ abstract contract AegylaxTest is Test {
             gridColumns: 10,
             gridRows: 5,
             sectorSpanKm: 1000,
-            interceptRadiusMilliSectors: 320,
+            interceptRadiusMilliSectors: 140,
             epochBlocks: 150,
             defenseSpeedKmPerBlock: 250,
             probeConeMicroRad: 802_851, // 46°
@@ -313,14 +313,6 @@ abstract contract AegylaxTest is Test {
      * play a round to feed the pool are usually still in the accumulation
      * half, so they have to roll here rather than calling the write raw.
      */
-    /**
-     * Opens the Global Defense draw once the join window has started.
-     *
-     * `openGlobalDefense` is refused until the last day (or half the interval,
-     * when N epochs is shorter than a day) before the draw epoch. Tests that
-     * play a round to feed the pool are usually still in the accumulation
-     * half, so they have to roll here rather than calling the write raw.
-     */
     function warpToDrawWindow() internal {
         (uint32 nextEpoch, uint32 interval,,) = lensOf().getGlobalDefenseDraw();
         uint32 epochBlocks = defaultParams().epochBlocks;
@@ -342,6 +334,33 @@ abstract contract AegylaxTest is Test {
     function openDrawWhenDue() internal returns (bytes32 drawId, uint32 epochId) {
         warpToDrawWindow();
         return game.openGlobalDefense();
+    }
+
+    function rendezvousBlock(bytes32 attackId, uint256 progressPermille) internal view returns (uint64 submitAt) {
+        (int256 x, int256 y) = pointOnTrajectory(attackId, progressPermille);
+        GameTypes.Attack memory attack = attackOf(attackId);
+        GameTypes.GameParams memory p = defaultParams();
+        Geometry.World memory w = Geometry.buildWorld(p.gridColumns, p.gridRows, p.sectorSpanKm);
+        uint256 climbScaled = Geometry.arrivalBlockScaled(w, Geometry.Point(x, y), 0, p.defenseSpeedKmPerBlock);
+        uint256 passScaled = uint256(attack.launchBlock) * GameTypes.TIME_SCALE
+            + (uint256(attack.flightBlocks) * progressPermille * GameTypes.TIME_SCALE) / 1000;
+        uint256 submitScaled =
+            passScaled > climbScaled ? passScaled - climbScaled : uint256(attack.launchBlock) * GameTypes.TIME_SCALE;
+        submitAt = uint64(submitScaled / GameTypes.TIME_SCALE);
+        if (submitAt < attack.launchBlock) submitAt = attack.launchBlock;
+        if (submitAt >= attack.impactBlock) submitAt = attack.impactBlock - 1;
+    }
+
+    /**
+     * Submit so climb lands when the threat is at this progress — the
+     * snapshot the protocol actually scores.
+     */
+    function timedSubmitOnTrajectory(bytes32 lobbyId, bytes32 attackId, address who, uint256 progressPermille)
+        internal
+    {
+        (int256 x, int256 y) = pointOnTrajectory(attackId, progressPermille);
+        vm.roll(rendezvousBlock(attackId, progressPermille));
+        submitPoint(lobbyId, who, x, y);
     }
 
     /**

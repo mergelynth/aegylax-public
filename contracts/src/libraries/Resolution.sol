@@ -17,23 +17,14 @@ import {Geometry} from "./Geometry.sol";
  * Two distinct facts come out of every defense, and keeping them apart is
  * the whole of the ranking rule:
  *
- *   intercepted — the threat entered this Defense Point's radius, and the
- *                 interceptor was already on station when it did. Several
- *                 defenders can manage that geometrically. It is not a
- *                 payout: a point further along the path never meets the
- *                 live threat once an earlier circle has already stopped it.
- *   winner      — among those intercepts, the earliest *entry along the
- *                 trajectory* (`interceptionBlockScaled`). The attack ends
- *                 there. Climb time is only the on-station gate, not the
- *                 ranking: a ring of accounts around Earth with short climbs
- *                 cannot collect a win for covering a path that was already
- *                 shot down higher up.
- *
- * Exactly equal entry times leave more than one winner — two radii that
- * the threat enters at the same moment both actually stopped it. The
- * protocol has nothing further to rank by, and reaching for transaction
- * order would reward being early to the mempool rather than being right,
- * so an exact tie splits the pool.
+ *   intercepted — at this interceptor's arrival (submit + climb), the
+ *                 threat was still in flight and inside the radius. A
+ *                 point on the chord at some other time is not a hit:
+ *                 twenty accounts on a static line are twenty independent
+ *                 bets on different moments, not a wall.
+ *   winner      — among those snapshot hits, the earliest *arrival*.
+ *                 Exact arrival ties split the pool. Transaction order
+ *                 is not a tie-break.
  */
 library Resolution {
     error InvalidDecryptionProof(uint256 index);
@@ -55,7 +46,7 @@ library Resolution {
         Context memory ctx,
         GameTypes.DecryptionProof[] memory proofs
     ) public {
-        uint256 bestEntry = type(uint256).max;
+        uint256 bestArrival = type(uint256).max;
 
         for (uint256 i = 0; i < list.length; i++) {
             GameTypes.DefenseAttempt storage attempt = list[i];
@@ -88,25 +79,20 @@ library Resolution {
             attempt.interceptY = ev.interceptY;
             attempt.missDistanceWu = ev.missDistanceWu;
 
-            if (ev.intercepted && ev.interceptionBlockScaled < bestEntry) {
-                bestEntry = ev.interceptionBlockScaled;
+            if (ev.intercepted && ev.arrivalBlockScaled < bestArrival) {
+                bestArrival = ev.arrivalBlockScaled;
             }
         }
 
-        if (bestEntry == type(uint256).max) return;
+        if (bestArrival == type(uint256).max) return;
+        outcome.winningArrivalBlockScaled = bestArrival;
 
         for (uint256 i = 0; i < list.length; i++) {
             GameTypes.DefenseAttempt storage attempt = list[i];
-            if (!attempt.intercepted || attempt.interceptionBlockScaled != bestEntry) continue;
+            if (!attempt.intercepted || attempt.arrivalBlockScaled != bestArrival) continue;
 
             attempt.isWinner = true;
             outcome.winners.push(attempt.participant);
-            if (
-                outcome.winningArrivalBlockScaled == 0
-                    || attempt.arrivalBlockScaled < outcome.winningArrivalBlockScaled
-            ) {
-                outcome.winningArrivalBlockScaled = attempt.arrivalBlockScaled;
-            }
             if (
                 outcome.interceptionBlockScaled == 0
                     || attempt.interceptionBlockScaled < outcome.interceptionBlockScaled

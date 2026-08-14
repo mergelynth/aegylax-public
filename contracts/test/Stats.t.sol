@@ -78,8 +78,7 @@ contract StatsTest is AegylaxTest {
     /// An interception moves the threat from the impact column to the intercepted one.
     function test_interceptionMovesTheThreatOutOfTheImpactColumn() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         (,, uint64 flown, uint64 intercepted, uint64 missed,,) = lensOf().getStats();

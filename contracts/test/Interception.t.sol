@@ -56,8 +56,7 @@ contract InterceptionTest is AegylaxTest {
 
     function test_pointOnTheTrajectory_intercepts() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
@@ -74,7 +73,7 @@ contract InterceptionTest is AegylaxTest {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
         GameTypes.Trajectory memory traj = trajectoryOf(attackId);
 
-        // A whole sector away from the path, well outside the 0.32-sector radius.
+        // A whole sector away from the path, well outside the 0.14-sector radius.
         int256 x = traj.targetX > 3_000_000_000 ? traj.targetX - 3_000_000_000 : traj.targetX + 3_000_000_000;
         submitPoint(lobbyId, alice, x, 100_000_000);
         completeAndReveal(lobbyId, attackId);
@@ -90,64 +89,59 @@ contract InterceptionTest is AegylaxTest {
     }
 
     /**
-     * ТЗ §5, the second condition: being in the right place is not enough,
-     * the interceptor has to be *there* before the threat passes through.
-     *
-     * Both defenders here pick the same point on the trajectory; one
-     * submits at launch and one submits so late that its interceptor is
-     * still climbing when the threat goes by.
+     * Being on the path is not enough: arrival has to coincide with the
+     * threat being there. Alice times the climb. Bob submits two blocks
+     * before impact and is still climbing after the threat has landed.
      */
     function test_lateArrival_doesNotIntercept() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
         GameTypes.Attack memory attack = attackOf(attackId);
 
-        // Well along the flight, so an interceptor launched now is on
-        // station long before the threat gets there.
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
 
-        // Bob picks the same place, but only a few blocks before impact.
         vm.roll(attack.impactBlock - 2);
         submitPoint(lobbyId, bob, x, y);
 
         completeAndReveal(lobbyId, attackId);
 
         GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
-        assertTrue(attempts[0].intercepted, "early defender should intercept");
-        assertFalse(attempts[1].intercepted, "late defender cannot be on station in time");
-        assertGt(attempts[1].arrivalBlockScaled, attempts[1].interceptionBlockScaled);
+        assertTrue(attempts[0].intercepted, "timed defender should intercept");
+        assertFalse(attempts[1].intercepted, "late defender arrives after the threat");
+        assertGe(attempts[1].arrivalBlockScaled, uint256(attack.impactBlock) * GameTypes.TIME_SCALE);
     }
 
     /**
-     * Ranking: several defenders may intercept the original chord, and the
-     * one whose radius the *live* threat enters first wins — not the one
-     * whose interceptor finished climbing first.
-     *
-     * Alice submits first and meets the threat high on the path. Bob
-     * submits one block later, closer to Earth, so his interceptor is on
-     * station sooner. Climb-arrival would pick Bob; the protocol follows
-     * the trajectory and picks Alice. Bob's circle covering a path that
-     * was already shot down is not a second win.
+     * A point near Earth submitted at launch arrives while the threat is
+     * still high — covering the chord is not a snapshot hit.
      */
-    function test_winner_isTheEarliestEntry_notTheEarliestArrival() public {
+    function test_earlyArrivalNearEarth_misses() public {
+        (bytes32 lobbyId, bytes32 attackId) = startedLobby();
+        (int256 x, int256 y) = pointOnTrajectory(attackId, 900);
+        submitPoint(lobbyId, alice, x, y);
+        completeAndReveal(lobbyId, attackId);
+
+        GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
+        assertFalse(attempts[0].intercepted);
+    }
+
+    /**
+     * Among snapshot hits, earliest arrival wins. Alice times a high
+     * intercept; Bob times a low one. Bob's climb is shorter, but he
+     * arrives later because the threat is not there until later.
+     */
+    function test_winner_isTheEarliestArrival_amongSnapshotHits() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
 
-        // Alice: high up along the trajectory, submitted first.
-        (int256 farX, int256 farY) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, farX, farY);
-
-        // Bob: close to Earth, submitted one block later.
-        vm.roll(block.number + 1);
-        (int256 nearX, int256 nearY) = pointOnTrajectory(attackId, 900);
-        submitPoint(lobbyId, bob, nearX, nearY);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
+        timedSubmitOnTrajectory(lobbyId, attackId, bob, 900);
 
         completeAndReveal(lobbyId, attackId);
 
         GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
         assertTrue(attempts[0].intercepted);
         assertTrue(attempts[1].intercepted);
-        assertLt(attempts[1].arrivalBlockScaled, attempts[0].arrivalBlockScaled, "bob's interceptor arrives first");
-        assertLt(attempts[0].interceptionBlockScaled, attempts[1].interceptionBlockScaled, "alice meets the threat first");
+        assertLt(attempts[0].arrivalBlockScaled, attempts[1].arrivalBlockScaled, "alice arrives first");
 
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
         assertEq(outcome.winners.length, 1);
@@ -159,8 +153,8 @@ contract InterceptionTest is AegylaxTest {
     function test_exactTie_splitsBetweenBothWinners() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
 
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 500);
         (int256 x, int256 y) = pointOnTrajectory(attackId, 500);
-        submitPoint(lobbyId, alice, x, y);
         submitPoint(lobbyId, bob, x, y); // same block, same point
 
         completeAndReveal(lobbyId, attackId);
@@ -173,7 +167,7 @@ contract InterceptionTest is AegylaxTest {
         assertEq(outcome.rewardPerWinner, uint256(lobby.rewardPool) / 2);
     }
 
-    /// Several interceptors: everyone who stopped it is recorded, one of them won.
+    /// Several timed intercepts: all snapshot-valid, earliest arrival wins.
     function test_multipleInterceptors_allRecorded_oneWins() public {
         bytes32 lobbyId = createLobby();
         join(lobbyId, alice);
@@ -186,12 +180,9 @@ contract InterceptionTest is AegylaxTest {
         bytes32 attackId = lobby.attackId;
         vm.roll(attackOf(attackId).launchBlock);
 
-        (int256 x1, int256 y1) = pointOnTrajectory(attackId, 200);
-        (int256 x2, int256 y2) = pointOnTrajectory(attackId, 500);
-        (int256 x3, int256 y3) = pointOnTrajectory(attackId, 800);
-        submitPoint(lobbyId, alice, x1, y1);
-        submitPoint(lobbyId, bob, x2, y2);
-        submitPoint(lobbyId, carol, x3, y3);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 200);
+        timedSubmitOnTrajectory(lobbyId, attackId, bob, 500);
+        timedSubmitOnTrajectory(lobbyId, attackId, carol, 800);
 
         completeAndReveal(lobbyId, attackId);
 
@@ -202,11 +193,9 @@ contract InterceptionTest is AegylaxTest {
             if (attempts[i].intercepted) interceptors++;
             if (attempts[i].isWinner) winners++;
         }
-        assertEq(interceptors, 3, "all three points sit on the path");
-        assertEq(winners, 1, "only the first entry along the path takes it");
+        assertEq(interceptors, 3, "all three timed the snapshot");
+        assertEq(winners, 1, "only the earliest arrival takes it");
 
-        // Alice placed the point nearest launch, so the threat enters her
-        // radius first even though everybody submitted in the same block.
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
         assertEq(outcome.winners[0], alice);
     }

@@ -194,7 +194,22 @@ Anything about an operation's *terms* comes from its own copy.
 The coordinate is encrypted **in the browser**, against the engine's address,
 before the transaction is built. The contract stores a handle; an observer sees
 only that a defense was submitted. One per participant, ever — there is no path
-that overwrites one. Increments `attemptCount` and `validActions`.
+that overwrites one. Submit also records `submitBlock`; `arrivalBlock =
+submitBlock + climbTime` is derived at reveal from altitude and
+`defenseSpeedKmPerBlock`. Increments `attemptCount` and `validActions`.
+Sending a probe after this player's submit reverts: recon is closed for them.
+
+The hit test is a **spacetime snapshot**, not a chord cover:
+
+```
+arrival = submit + climb
+valid   = arrival < impact
+      AND distance(point, trajectory[arrival]) <= radius
+```
+
+Radius is `interceptRadiusMilliSectors / 1000` sectors (0.14 in source).
+Twenty accounts may still place twenty points — that is twenty independent
+bets on different moments, not coverage of the path.
 
 ### 2.6 Activation — `_activate`
 
@@ -293,6 +308,10 @@ itself — where giving up on the first one left a finished round with no result
 and no claimable reward until somebody noticed the manual button.
 
 ### 2.9 Scoring — `resolveLobby`
+
+Among snapshot hits (`arrival` still in flight and the threat inside the
+radius *then*), the winner set is every attempt whose arrival equals the
+earliest. Exact ties split. Then:
 
 ```
 winners > 0  → intercepted; rewardPerWinner = rewardPool / winners
@@ -491,7 +510,7 @@ second `setInterval` sampling `Date.now()` at an unrelated moment.
 ## 9. Deployment note
 
 These rules **are live** on Base Sepolia (proxy in `deployments/84532.json`,
-game `1.3.1`, params version 3). Changing limits is `npm run chain:params`
+game `1.3.2`, params version 4). Changing limits is `npm run chain:params`
 (no redeploy). Changing bytecode is `npm run chain:upgrade`. The draw
 interval is `setGlobalDefenseInterval`, not a `GameParams` field.
 

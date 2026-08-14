@@ -134,7 +134,7 @@ contract AegylaxGame is
 
     /// Implementation version — bumped by hand with every deployed implementation.
     function version() external pure virtual returns (string memory) {
-        return "1.3.1";
+        return "1.3.2";
     }
 
     // -----------------------------------------------------------------

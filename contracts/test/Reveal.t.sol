@@ -92,8 +92,7 @@ contract RevealTest is AegylaxTest {
 
     function test_reveal_rejectsAnInventedDefensePoint() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
 
         landAttack(attackId);
         game.unlockDefenses(lobbyId);
@@ -102,15 +101,15 @@ contract RevealTest is AegylaxTest {
         (,, GameTypes.DecryptionProof[] memory defenses) = proofsFor(lobbyId, attackId);
 
         // A defender who lost cannot move their point onto the trajectory.
-        defenses[0].value = Geometry.packPoint(uint256(x), uint256(y) + 1);
+        (int256 px, int256 py) = pointOnTrajectory(attackId, 400);
+        defenses[0].value = Geometry.packPoint(uint256(px), uint256(py) + 1);
         vm.expectRevert(abi.encodeWithSelector(Resolution.InvalidDecryptionProof.selector, 0));
         game.resolveLobby(lobbyId, defenses);
     }
 
     function test_reveal_rejectsWrongProofCount() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
 
         landAttack(attackId);
         game.unlockDefenses(lobbyId);
@@ -200,8 +199,7 @@ contract RevealTest is AegylaxTest {
         bytes32 attackId = first.attackId;
         assertEq(second.attackId, attackId, "both teams defend the epoch's one attack");
 
-        vm.roll(attackOf(attackId).launchBlock);
-
+        vm.roll(rendezvousBlock(attackId, 500));
         (int256 x, int256 y) = pointOnTrajectory(attackId, 500);
         submitPoint(firstLobby, alice, x, y);
         submitPoint(secondLobby, bob, x, y);
@@ -310,8 +308,7 @@ contract RevealTest is AegylaxTest {
      */
     function test_twoCallReveal_producesTheSameResultAsFourCalls() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
 
         vm.roll(attackOf(attackId).impactBlock + 1);
 
@@ -365,8 +362,7 @@ contract RevealTest is AegylaxTest {
      */
     function test_twoCallReveal_isIdempotent() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
 
         completeAndReveal(lobbyId, attackId);
         (, GameTypes.Outcome memory first) = lensOf().getOutcome(lobbyId);
@@ -423,8 +419,7 @@ contract RevealTest is AegylaxTest {
     /// `resolveLobby`'s rule is unchanged when it is reached through the batch.
     function test_revealAndResolve_stillRequiresOneProofPerAttempt() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 400);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
 
         vm.roll(attackOf(attackId).impactBlock + 1);
         game.unlockRound(lobbyId);

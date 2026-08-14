@@ -43,8 +43,7 @@ contract ReentrantWinner {
 contract PayoutsTest is AegylaxTest {
     function test_winner_claimsTheWholePool() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
@@ -58,8 +57,7 @@ contract PayoutsTest is AegylaxTest {
 
     function test_reward_cannotBeClaimedTwice() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         vm.prank(alice);
@@ -73,8 +71,7 @@ contract PayoutsTest is AegylaxTest {
     function test_loser_cannotClaim() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
 
-        (int256 winX, int256 winY) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, winX, winY);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         submitPoint(lobbyId, bob, 500_000_000, 500_000_000);
 
         completeAndReveal(lobbyId, attackId);
@@ -86,8 +83,7 @@ contract PayoutsTest is AegylaxTest {
 
     function test_nonParticipant_cannotClaim() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         vm.prank(carol);
@@ -97,8 +93,7 @@ contract PayoutsTest is AegylaxTest {
 
     function test_claim_rejectedBeforeReveal() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
 
         landAttack(attackId);
 
@@ -123,6 +118,7 @@ contract PayoutsTest is AegylaxTest {
         vm.roll(attackOf(attackId).launchBlock);
 
         (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
+        vm.roll(rendezvousBlock(attackId, 700));
         attacker.defend(engine.unsafeEncode(uint256(x) | (uint256(y) << 128)));
 
         completeAndReveal(lobbyId, attackId);
@@ -138,8 +134,7 @@ contract PayoutsTest is AegylaxTest {
 
     function test_creator_isPaidTheFeeWhateverTheOutcome() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
@@ -315,8 +310,7 @@ contract PayoutsTest is AegylaxTest {
     /// Everything that came in leaves again, and nothing more.
     function test_solvency_acrossAFullOperation() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
-        (int256 x, int256 y) = pointOnTrajectory(attackId, 700);
-        submitPoint(lobbyId, alice, x, y);
+        timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
         completeAndReveal(lobbyId, attackId);
 
         vm.prank(alice);
