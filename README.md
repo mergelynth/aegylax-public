@@ -1,4 +1,4 @@
-# AEGYLAX — Planetary Defense (protocol)
+ч# AEGYLAX — Planetary Defense (protocol)
 
 Earth is under attack. Players open Defense Operations, buy incomplete
 intelligence with Recon Probes, and commit one Defense Point against a
@@ -273,6 +273,13 @@ plan: what the protocol will do, and what players should expect next.
 - Timelock + multisig owner; documented upgrade procedure.
 - Monitoring: engine balance, unrevealed attacks, treasury vs escrow.
 
+### Indexer + lobby dashboard
+
+- Index every lobby so search and history do not depend on a live RPC
+  window.
+- Public dashboard: all lobbies, status, seats, pool, outcome — not only
+  the one the player has open.
+
 ### Client (proprietary)
 
 - Mobile-first operation screen; installable PWA; push for “attack
@@ -285,7 +292,6 @@ plan: what the protocol will do, and what players should expect next.
   not depend on someone having the tab open.
 - Re-read probe answers from Inco — clearing the browser currently
   destroys paid intelligence.
-- An indexer for history beyond live `getLogs`.
 - Sybil resistance on free probes is still per address. A farm cannot
   cancel the per-attack bias ε, and it cannot dump an allowance in one
   block: each probe is in flight for 8 blocks before the hint is
