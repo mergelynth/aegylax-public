@@ -245,7 +245,48 @@ not a licence to copy, modify, distribute, or reuse the software.
 
 ## Roadmap
 
-- Third-party audit and bug bounty before mainnet value
-- Chunked reveal (`maxPlayers` is 9999; a full room will not fit in one tx)
-- Base mainnet with a timelocked / multisig owner
-- Dedicated keeper so reveals and Global Defense opens do not depend on a tab
+The client is not in this repo. The items below are still the public
+plan: what the protocol will do, and what players should expect next.
+
+### Economy and mechanics
+
+- Tune testnet numbers for real play: seat fee, probe price, jackpot
+  cadence, interception radius, recon cone.
+- Richer recon (not only a bearing) and more than one Defense Point /
+  loadouts.
+- Deadline for unclaimed rewards; USDC (or another ERC-20) as the prize
+  coin — the contract still settles in native ETH.
+
+### Audit
+
+- Third-party security audit. The Foundry suite is not an audit.
+- Bug bounty before any mainnet value.
+- Chunked reveal: `maxPlayers` is 9999 on chain; a full room will not
+  fit in one Base transaction. Until then, practical rooms stay far
+  below that cap.
+- Harden Inco under load (Sepolia e2e exists; production traffic does
+  not). An unfunded engine cannot start an attack.
+
+### Base mainnet
+
+- New deploy on Base (`CHAIN_ID=8453`), new keys.
+- Timelock + multisig owner; documented upgrade procedure.
+- Monitoring: engine balance, unrevealed attacks, treasury vs escrow.
+
+### Client (proprietary)
+
+- Mobile-first operation screen; installable PWA; push for “attack
+  lands” and “you can claim”.
+- Telegram Mini App: same contract on Base, smaller chrome (no TON).
+
+### Also
+
+- A dedicated keeper so reveals, cancels, and Global Defense opens do
+  not depend on someone having the tab open.
+- Re-read probe answers from Inco — clearing the browser currently
+  destroys paid intelligence.
+- An indexer for history beyond live `getLogs`.
+- Sybil resistance on free probes is still per address. A farm cannot
+  cancel the per-attack bias ε, and it cannot dump an allowance in one
+  block: each probe is in flight for 8 blocks before the hint is
+  readable.
