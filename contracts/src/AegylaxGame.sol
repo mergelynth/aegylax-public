@@ -1091,6 +1091,9 @@ contract AegylaxGame is
      * only after the protocol has re-checked the operation, the reveal, the
      * interception, the ranking and the not-already-claimed flag. Deciding
      * on a client that somebody won changes nothing here.
+     *
+     * When the caller is also the creator, the Creator Fee is paid on this
+     * same call so they are not left on a second button.
      */
     function claimReward(bytes32 lobbyId) external nonReentrant returns (uint256 amount) {
         GameStorage storage $ = _s();
@@ -1108,12 +1111,29 @@ contract AegylaxGame is
         GameTypes.DefenseAttempt storage attempt = $.attempts[lobbyId][participant.defenseIndex - 1];
         if (!attempt.isWinner) revert NothingToClaim();
 
-        amount = outcome.rewardPerWinner;
+        uint256 prize = outcome.rewardPerWinner;
         participant.claimed = true;
-        lobby.rewardsClaimed += uint128(amount);
+        lobby.rewardsClaimed += uint128(prize);
 
+        /*
+         * A creator who also won is owed the fee on the same button as the
+         * prize. Paying it here keeps them off a second claim after every
+         * other winner has already been paid. `settleCreator` still exists
+         * for a creator who did not intercept, and for a leftover call.
+         */
+        uint256 fee;
+        if (msg.sender == lobby.creator && !lobby.creatorSettled) {
+            uint256 creatorSeatFee = lobby.creator == address(this) ? 0 : $.lobbyParams[lobbyId].protocolJoinFee;
+            fee = Settlement.creatorDue(lobby, $.lobbyConfigs[lobbyId], outcome, creatorSeatFee);
+            if (fee > 0) {
+                lobby.creatorSettled = true;
+            }
+        }
+
+        amount = prize + fee;
         _pay(payable(msg.sender), amount);
-        emit RewardClaimed(lobbyId, msg.sender, amount);
+        emit RewardClaimed(lobbyId, msg.sender, prize);
+        if (fee > 0) emit CreatorSettled(lobbyId, lobby.creator, fee);
     }
 
     /**
@@ -1121,8 +1141,10 @@ contract AegylaxGame is
      *
      * UNPLAYED and CANCELLED both return everything a wallet paid in — entry,
      * seat fee and probes alike — because in neither case was a round
-     * delivered. What separates them is *whose* failure it was, not what is
-     * owed: nobody turned up, or the protocol could not run the game.
+     * delivered. The creator is on this same call: the bounty and the seat
+     * fee they paid at mint come back here, so they are not left on a second
+     * button after every defender has already been paid. What separates the
+     * two endings is *whose* failure it was, not what is owed.
      *
      * COMPLETED owes nothing, and that is a deliberate change from the rule
      * this replaces. That one refunded the entry money whenever the threat got
@@ -1135,13 +1157,33 @@ contract AegylaxGame is
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
 
         GameTypes.Participant storage participant = $.participants[lobbyId][msg.sender];
-        if (!participant.joined) revert NotParticipant();
-        if (participant.refunded) revert AlreadyClaimed();
+        if (participant.joined && !participant.refunded) {
+            uint256 defenderDue = Settlement.refundDue(lobby.ending, participant);
+            if (defenderDue > 0) {
+                amount += defenderDue;
+                participant.refunded = true;
+            }
+        }
 
-        amount = Settlement.refundDue(lobby.ending, participant);
-        if (amount == 0) revert NothingToClaim();
+        if (msg.sender == lobby.creator && !lobby.creatorSettled) {
+            uint256 creatorSeatFee = lobby.creator == address(this) ? 0 : $.lobbyParams[lobbyId].protocolJoinFee;
+            uint256 creatorLaunch = Settlement.creatorRefundDue(lobby.ending, $.lobbyConfigs[lobbyId], creatorSeatFee);
+            if (creatorLaunch > 0) {
+                amount += creatorLaunch;
+                lobby.creatorSettled = true;
+                emit CreatorSettled(lobbyId, lobby.creator, creatorLaunch);
+            }
+        }
 
-        participant.refunded = true;
+        if (amount == 0) {
+            if (msg.sender == lobby.creator && lobby.creatorSettled && (!participant.joined || participant.refunded)) {
+                revert AlreadyClaimed();
+            }
+            if (!participant.joined) revert NotParticipant();
+            if (participant.refunded) revert AlreadyClaimed();
+            revert NothingToClaim();
+        }
+
         _pay(payable(msg.sender), amount);
         emit RefundClaimed(lobbyId, msg.sender, amount);
     }

@@ -1,4 +1,4 @@
-ч# AEGYLAX — Planetary Defense (protocol)
+# AEGYLAX — Planetary Defense (protocol)
 
 Earth is under attack. Players open Defense Operations, buy incomplete
 intelligence with Recon Probes, and commit one Defense Point against a

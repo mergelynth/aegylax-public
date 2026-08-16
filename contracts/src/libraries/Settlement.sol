@@ -57,6 +57,25 @@ library Settlement {
     }
 
     /**
+     * What the creator takes back when the round never ran.
+     *
+     * Same two endings as `refundDue`, and the same reason: nothing was
+     * delivered, so the bounty and the seat fee they paid at mint come home.
+     * This is what `claimRefund` adds for the creator, so they are not left
+     * on a second button after every defender has already been paid.
+     */
+    function creatorRefundDue(
+        GameTypes.Ending ending,
+        GameTypes.LobbyConfig storage config,
+        uint256 creatorJoinFee
+    ) public view returns (uint256) {
+        if (ending == GameTypes.Ending.UNPLAYED || ending == GameTypes.Ending.CANCELLED) {
+            return uint256(config.startPrizePool) + creatorJoinFee;
+        }
+        return 0;
+    }
+
+    /**
      * The creator's settlement, in one figure whatever happened.
      *
      * On a round that ran, the Creator Fee is earned on a hit and on a miss
@@ -69,9 +88,10 @@ library Settlement {
      * promise and the advertised pool close to meaningless.
      *
      * On a round that did not run — UNPLAYED or CANCELLED — the bounty comes
-     * home untouched, along with the creator's own seat fee, because the
-     * creator pays that fee like every other participant (ТЗ §17) and
-     * `refundDue` is what returns everybody else's.
+     * home untouched, along with the creator's own seat fee. `claimRefund`
+     * pays that now (so the creator is on the same button as everybody else);
+     * `settleCreator` still knows the figure so a leftover call cannot strand
+     * the money, and so a protocol-owned draw can return it to the pool.
      *
      * `creatorJoinFee` is passed rather than read off the lobby: the lobby's
      * `protocolFeeAccrued` is the whole room's fees, and only one seat's worth
@@ -86,7 +106,7 @@ library Settlement {
         GameTypes.Ending ending = lobby.ending;
 
         if (ending == GameTypes.Ending.UNPLAYED || ending == GameTypes.Ending.CANCELLED) {
-            return uint256(config.startPrizePool) + creatorJoinFee;
+            return creatorRefundDue(ending, config, creatorJoinFee);
         }
         if (ending != GameTypes.Ending.COMPLETED) return 0;
 

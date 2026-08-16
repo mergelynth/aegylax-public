@@ -381,10 +381,12 @@ contract LifecycleTest is AegylaxTest {
 
         uint256 creatorBefore = creator.balance;
         vm.prank(creator);
+        game.claimRefund(lobbyId);
+        assertEq(creator.balance, creatorBefore + createCost(), "creator refunds launch deposit on the same call");
+
+        vm.prank(creator);
+        vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
         game.settleCreator(lobbyId);
-        // The bounty *and* the creator's own seat fee: they hold a seat like
-        // everybody else, and an operation that never ran refunds every seat.
-        assertEq(creator.balance, creatorBefore + createCost());
 
         // ТЗ §18 — nobody's fault but the turnout's, so UNPLAYED rather than
         // CANCELLED. The two refund identically and mean different things.

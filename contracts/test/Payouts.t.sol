@@ -41,6 +41,35 @@ contract ReentrantWinner {
 
 /// Rewards, refunds, creator settlement, protocol fees — and who may take what.
 contract PayoutsTest is AegylaxTest {
+    function test_winnerCreator_claimRewardPaysTheFeeToo() public {
+        bytes32 lobbyId = createLobby();
+        join(lobbyId, creator);
+        join(lobbyId, alice);
+        closeApplications();
+        game.startOperation(lobbyId);
+
+        bytes32 attackId = lobbyAttack(lobbyId);
+        vm.roll(attackOf(attackId).launchBlock);
+        timedSubmitOnTrajectory(lobbyId, attackId, creator, 700);
+        completeAndReveal(lobbyId, attackId);
+
+        (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
+        uint256 before = creator.balance;
+
+        vm.prank(creator);
+        uint256 paid = game.claimReward(lobbyId);
+
+        assertEq(paid, lobby.rewardPool + lobby.creatorFeeAccrued, "prize and Creator Fee in one call");
+        assertEq(creator.balance, before + paid);
+
+        (GameTypes.Lobby memory settled,,) = lensOf().getLobby(lobbyId);
+        assertTrue(settled.creatorSettled);
+
+        vm.prank(creator);
+        vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
+        game.settleCreator(lobbyId);
+    }
+
     function test_winner_claimsTheWholePool() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
         timedSubmitOnTrajectory(lobbyId, attackId, alice, 700);
