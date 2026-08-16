@@ -49,29 +49,42 @@ interface IConfidentialEngine {
     /**
      * Computes one Recon Probe's private answer (ТЗ §3).
      *
-     * The answer is the true launch bearing plus two noises, and it is
-     * *not* granted to `player` here. `grantProbeHint` is what opens it,
-     * after the probe has been in flight for `ReconRules.DELAY_BLOCKS`.
-     * Computing and granting in the same call would let a bot decrypt the
-     * hint in the same block it sent the probe.
+     * The answer is a packed pair of noisy angles — launch bearing θ and
+     * impact offset δ — and it is *not* granted to `player` here.
+     * `grantProbeHint` is what opens it, after the probe has been in flight
+     * for `ReconRules.DELAY_BLOCKS`. Computing and granting in the same
+     * call would let a bot decrypt the hint in the same block it sent the
+     * probe.
      *
-     * The two noises are different things, and both have to be there:
+     * Trigonometry cannot run on ciphertext, so the engine does not return
+     * a point. It returns `δ_noisy << 32 | θ_noisy`. The client reconstructs
+     * the chord in the clear and samples it at the public flight progress of
+     * the send block: a shutter of where the attack is, already offset.
+     *
+     * The two noises on θ are different things, and both have to be there:
      *
      *   - cell noise, a deterministic function of `sensorKey`. Binding the
      *     draw to the cell is the anti-Sybil design (ТЗ §5): a second
      *     reading from the same place is the same reading, whoever pays.
-     *     New knowledge costs a new position.
-     *   - attack bias ε, drawn once per attack and added to every probe
-     *     on it. Extra cells average away their own noise and converge
-     *     on θ + ε, never on θ. That residual is what stops a farm of
-     *     wallets from buying a solved ray.
+     *     New knowledge costs a new position. δ gets its own per-cell draw
+     *     of the same width, without ε — farms must not converge on the
+     *     true chord by averaging.
+     *   - attack bias ε, drawn once per attack and added to every probe's
+     *     θ. Extra cells average away their own noise and converge on
+     *     θ + ε, never on θ.
      *
      * Both are triangular — the sum of two draws — so a reading sits
      * near its own centre more often than at the edge of its error bar.
+     * `coneMicroRad` is the half-width of each draw (`GameParams.probeConeMicroRad`).
      */
-    function newProbeHint(bytes32 attackId, bytes32 bearingHandle, address player, bytes32 sensorKey, uint32 coneMicroRad)
-        external
-        returns (bytes32 hintHandle);
+    function newProbeHint(
+        bytes32 attackId,
+        bytes32 bearingHandle,
+        bytes32 deltaHandle,
+        address player,
+        bytes32 sensorKey,
+        uint32 coneMicroRad
+    ) external returns (bytes32 hintHandle);
 
     /**
      * Grants `player` the right to decrypt a hint `newProbeHint` already

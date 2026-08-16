@@ -21,6 +21,11 @@ pragma solidity ^0.8.28;
  *     read the hint. Sending another probe (or collecting this one) before
  *     that block reverts, so dumping an allowance in one block and locking
  *     a Defense Point in the next is not a legal line.
+ *
+ * The hint itself is two noisy angles packed into one integer, because the
+ * confidential layer cannot run trigonometry on ciphertext. The client
+ * unpacks them, reconstructs the chord, and samples it at the public
+ * flight progress of the send block — a shutter, not a bearing type.
  */
 library ReconRules {
     /// 5° in microradians. Half-width of the triangular attack bias ε.
@@ -28,4 +33,19 @@ library ReconRules {
 
     /// Blocks a probe spends in flight before its hint can be granted.
     uint32 internal constant DELAY_BLOCKS = 8;
+
+    /// Low 32 bits of a packed hint hold noisy θ; the next 32 hold noisy δ.
+    uint256 internal constant HINT_LIMB = 1 << 32;
+
+    function packHint(uint256 thetaLimb, uint256 deltaLimb) internal pure returns (uint256) {
+        return (deltaLimb << 32) | (thetaLimb & (HINT_LIMB - 1));
+    }
+
+    function unpackTheta(uint256 packed) internal pure returns (uint256) {
+        return packed & (HINT_LIMB - 1);
+    }
+
+    function unpackDelta(uint256 packed) internal pure returns (uint256) {
+        return packed >> 32;
+    }
 }

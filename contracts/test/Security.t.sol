@@ -126,7 +126,7 @@ contract SecurityTest is AegylaxTest {
 
         vm.prank(bob);
         vm.expectRevert(MockConfidentialEngine.NotGame.selector);
-        engine.newProbeHint(bytes32(uint256(1)), bytes32(uint256(2)), bob, bytes32(uint256(3)), 1000);
+        engine.newProbeHint(bytes32(uint256(1)), bytes32(uint256(2)), bytes32(uint256(3)), bob, bytes32(uint256(4)), 1000);
 
         bytes32[] memory handles = new bytes32[](1);
         vm.prank(bob);

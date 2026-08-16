@@ -134,7 +134,7 @@ contract AegylaxGame is
 
     /// Implementation version — bumped by hand with every deployed implementation.
     function version() external pure virtual returns (string memory) {
-        return "1.4.0";
+        return "1.5.0";
     }
 
     // -----------------------------------------------------------------
@@ -527,7 +527,9 @@ contract AegylaxGame is
         if (attack.status == GameTypes.AttackStatus.PENDING) attack.status = GameTypes.AttackStatus.LAUNCHED;
 
         bytes32 sensorKey = keccak256(abi.encode(sensorColumn, sensorRow));
-        hintHandle = $.engine.newProbeHint(attack.id, attack.bearingHandle, msg.sender, sensorKey, p.probeConeMicroRad);
+        hintHandle = $.engine.newProbeHint(
+            attack.id, attack.bearingHandle, attack.deltaHandle, msg.sender, sensorKey, p.probeConeMicroRad
+        );
         uint64 readableAt = uint64(block.number + uint256(ReconRules.DELAY_BLOCKS));
         $.probeFlights[hintHandle] = GameTypes.ProbeFlight({
             player: msg.sender,

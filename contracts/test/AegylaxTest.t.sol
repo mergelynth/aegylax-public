@@ -78,7 +78,7 @@ abstract contract AegylaxTest is Test {
             interceptRadiusMilliSectors: 140,
             epochBlocks: 150,
             defenseSpeedKmPerBlock: 250,
-            probeConeMicroRad: 802_851, // 46°
+            probeConeMicroRad: 174_533, // 10° — shutter jitter, above one intercept radius
             revealGraceBlocks: 1000,
             minPlayers: 2,
             maxPlayers: 20,

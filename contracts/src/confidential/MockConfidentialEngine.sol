@@ -84,29 +84,14 @@ contract MockConfidentialEngine is IConfidentialEngine {
     function newProbeHint(
         bytes32 attackId,
         bytes32 bearingHandle,
+        bytes32 deltaHandle,
         address player,
         bytes32 sensorKey,
         uint32 coneMicroRad
     ) external onlyGame returns (bytes32 hintHandle) {
         uint256 cone = uint256(coneMicroRad);
-
-        /*
-         * Drawn once per sensor cell and kept — not recomputed, and not
-         * derived from anything a player could evaluate themselves.
-         *
-         * Both halves matter. Deterministic-in-the-cell is what defeats
-         * Sybil: the same place answers the same thing whoever pays. But a
-         * *publicly computable* function of the cell would be worse than
-         * fresh noise — a player could work out the offset offline and
-         * subtract it from their reading to recover the exact bearing from a
-         * single probe. So it is a real draw, remembered.
-         */
-        bytes32 cell = keccak256(abi.encode(attackId, sensorKey));
-        if (!_cellNoiseSet[cell]) {
-            _cellNoise[cell] = (_draw(attackId, "noise-a") % (cone + 1)) + (_draw(attackId, "noise-b") % (cone + 1));
-            _cellNoiseSet[cell] = true;
-        }
-        uint256 noise = _cellNoise[cell];
+        uint256 noiseTheta = _cellOffset(attackId, sensorKey, "theta", cone);
+        uint256 noiseDelta = _cellOffset(attackId, sensorKey, "delta", cone);
         uint256 bias = _attackBiasOf(attackId);
 
         // The handle is per reader — two players may each hold their own
@@ -114,8 +99,34 @@ contract MockConfidentialEngine is IConfidentialEngine {
         // The reader is *not* recorded here: `grantProbeHint` is what names
         // them, after the probe has been in flight.
         hintHandle = keccak256(abi.encode(attackId, sensorKey, player));
-        _values[hintHandle] = _values[bearingHandle] + bias + noise;
+        _values[hintHandle] = ReconRules.packHint(
+            _values[bearingHandle] + bias + noiseTheta, _values[deltaHandle] + noiseDelta
+        );
         _hintExists[hintHandle] = true;
+    }
+
+    /**
+     * Drawn once per (sensor cell, angle) and kept — not recomputed, and
+     * not derived from anything a player could evaluate themselves.
+     *
+     * Both halves matter. Deterministic-in-the-cell is what defeats
+     * Sybil: the same place answers the same thing whoever pays. But a
+     * *publicly computable* function of the cell would be worse than
+     * fresh noise — a player could work out the offset offline and
+     * subtract it from their reading to recover the exact angles from a
+     * single probe. So it is a real draw, remembered.
+     */
+    function _cellOffset(bytes32 attackId, bytes32 sensorKey, string memory kind, uint256 cone)
+        private
+        returns (uint256)
+    {
+        bytes32 cell = keccak256(abi.encode(attackId, sensorKey, kind));
+        if (!_cellNoiseSet[cell]) {
+            _cellNoise[cell] = (_draw(attackId, string.concat(kind, "-a")) % (cone + 1))
+                + (_draw(attackId, string.concat(kind, "-b")) % (cone + 1));
+            _cellNoiseSet[cell] = true;
+        }
+        return _cellNoise[cell];
     }
 
     function grantProbeHint(bytes32 hintHandle, address player) external onlyGame {

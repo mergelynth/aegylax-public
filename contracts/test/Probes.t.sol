@@ -165,15 +165,19 @@ contract ProbesTest is AegylaxTest {
         assertEq(engine.reader(handle), alice);
         assertTrue(handle != bytes32(0));
 
-        // And the answer really is the bearing plus bounded noise, not the bearing.
-        // Noise is cell (0..2·cone) plus attack bias (0..2·bias).
-        (uint256 thetaRaw,) = secretOf(attackId);
-        uint256 hint = engine.unsafePeek(handle);
-        assertGe(hint, thetaRaw);
+        // And the answer really is the packed noisy (θ, δ), not the secrets themselves.
+        // θ noise is cell (0..2·cone) plus attack bias (0..2·bias); δ noise is cell only.
+        (uint256 thetaRaw, uint256 deltaRaw) = secretOf(attackId);
+        uint256 packed = engine.unsafePeek(handle);
+        uint256 thetaLimb = ReconRules.unpackTheta(packed);
+        uint256 deltaLimb = ReconRules.unpackDelta(packed);
+        assertGe(thetaLimb, thetaRaw);
         assertLe(
-            hint,
+            thetaLimb,
             thetaRaw + 2 * uint256(defaultParams().probeConeMicroRad) + 2 * uint256(ReconRules.BIAS_MICRO_RAD)
         );
+        assertGe(deltaLimb, deltaRaw);
+        assertLe(deltaLimb, deltaRaw + 2 * uint256(defaultParams().probeConeMicroRad));
     }
 
     /// Sensors in different places disagree — that is what makes several of them narrow it down.
@@ -321,16 +325,16 @@ contract ProbesTest is AegylaxTest {
         bytes32 b = sendProbeReady(lobbyId, alice, 7, 3);
 
         (uint256 thetaRaw,) = secretOf(attackId);
-        uint256 hintA = engine.unsafePeek(a);
-        uint256 hintB = engine.unsafePeek(b);
-        uint256 mid = (hintA + hintB) / 2;
+        uint256 thetaA = ReconRules.unpackTheta(engine.unsafePeek(a));
+        uint256 thetaB = ReconRules.unpackTheta(engine.unsafePeek(b));
+        uint256 mid = (thetaA + thetaB) / 2;
 
         // If there were only cell noise, two independent triangular draws
         // centred on `cone` would put the midpoint near θ + cone. With ε
         // on top, the midpoint sits `bias` further out on average — and
         // in any case it is not the bearing itself.
         assertTrue(mid != thetaRaw, "fused cells must not recover the bearing");
-        assertGe(hintA, thetaRaw);
-        assertGe(hintB, thetaRaw);
+        assertGe(thetaA, thetaRaw);
+        assertGe(thetaB, thetaRaw);
     }
 }

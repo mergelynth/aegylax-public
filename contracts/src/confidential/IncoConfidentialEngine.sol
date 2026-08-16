@@ -131,44 +131,59 @@ contract IncoConfidentialEngine is IConfidentialEngine, Ownable {
     function newProbeHint(
         bytes32 attackId,
         bytes32 bearingHandle,
+        bytes32 deltaHandle,
         address player,
         bytes32 sensorKey,
         uint32 coneMicroRad
     ) external onlyGame returns (bytes32 hintHandle) {
         player; // granted later, by `grantProbeHint`, after the delay.
-        /*
-         * One draw per sensor cell, kept for the life of the attack.
-         *
-         * `randBounded` per call made every probe an independent sample, so
-         * ten wallets bought ten times the convergence for the same price
-         * each — the Sybil hole ТЗ §5 is about. Binding the draw to the cell
-         * means a second reading from the same place is the same reading,
-         * and new knowledge has to be bought with a new position.
-         *
-         * It stays a *draw* rather than a hash of the cell: a player who
-         * could compute the offset themselves would subtract it from their
-         * reading and recover the bearing exactly, from one probe.
-         */
-        bytes32 cell = keccak256(abi.encode(attackId, sensorKey));
-        euint256 noise;
-        if (_cellNoiseSet[cell]) {
-            noise = euint256.wrap(_cellNoise[cell]);
-        } else {
-            uint256 cone = uint256(coneMicroRad);
-            // Triangular noise: the sum of two independent uniform draws.
-            noise = e.add(e.randBounded(cone + 1), e.randBounded(cone + 1));
-            e.allowThis(noise);
-            _cellNoise[cell] = euint256.unwrap(noise);
-            _cellNoiseSet[cell] = true;
-        }
+        uint256 cone = uint256(coneMicroRad);
+        euint256 noiseTheta = _cellOffset(attackId, sensorKey, "theta", cone);
+        euint256 noiseDelta = _cellOffset(attackId, sensorKey, "delta", cone);
 
         euint256 bias = _attackBiasOf(attackId);
-        euint256 hint = e.add(e.add(euint256.wrap(bearingHandle), bias), noise);
+        euint256 thetaNoisy = e.add(e.add(euint256.wrap(bearingHandle), bias), noiseTheta);
+        euint256 deltaNoisy = e.add(euint256.wrap(deltaHandle), noiseDelta);
+        // Packed `δ << 32 | θ`. No `e.mul` / `e.shl` on this executor, so
+        // the shift is thirty-two encrypted doublings.
+        euint256 hint = e.add(_shl32(deltaNoisy), thetaNoisy);
 
         e.allowThis(hint);
         // Deliberately not `e.allow(hint, player)`. The game calls
         // `grantProbeHint` once the probe has been in flight long enough.
         return euint256.unwrap(hint);
+    }
+
+    /**
+     * One draw per (sensor cell, angle), kept for the life of the attack.
+     *
+     * `randBounded` per call made every probe an independent sample, so
+     * ten wallets bought ten times the convergence for the same price
+     * each — the Sybil hole ТЗ §5 is about. Binding the draw to the cell
+     * means a second reading from the same place is the same reading,
+     * and new knowledge has to be bought with a new position.
+     *
+     * It stays a *draw* rather than a hash of the cell: a player who
+     * could compute the offset themselves would subtract it from their
+     * reading and recover the angles exactly, from one probe.
+     */
+    function _cellOffset(bytes32 attackId, bytes32 sensorKey, string memory kind, uint256 cone)
+        private
+        returns (euint256 noise)
+    {
+        bytes32 cell = keccak256(abi.encode(attackId, sensorKey, kind));
+        if (_cellNoiseSet[cell]) return euint256.wrap(_cellNoise[cell]);
+        noise = e.add(e.randBounded(cone + 1), e.randBounded(cone + 1));
+        e.allowThis(noise);
+        _cellNoise[cell] = euint256.unwrap(noise);
+        _cellNoiseSet[cell] = true;
+    }
+
+    function _shl32(euint256 x) private returns (euint256 y) {
+        y = x;
+        for (uint256 i = 0; i < 32; ++i) {
+            y = e.add(y, y);
+        }
     }
 
     /// @inheritdoc IConfidentialEngine

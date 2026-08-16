@@ -99,7 +99,15 @@ library GameTypes {
         uint32 epochBlocks;
         /// How fast an interceptor climbs to its Defense Point, km per block (ТЗ §5).
         uint32 defenseSpeedKmPerBlock;
-        /// Half-width of the error one Recon Probe leaves on its bearing, in microradians.
+        /**
+         * Angular jitter half-width, in microradians, added independently to
+         * the noisy launch bearing θ and impact offset δ a probe returns.
+         *
+         * The encrypted answer is `δ_noisy << 32 | θ_noisy`. The field keeps
+         * this name and this slot so a governed `setParams` retunes the
+         * shutter without a storage-layout change. Sized above one intercept
+         * radius so sitting Defense on a mark is not a free hit.
+         */
         uint32 probeConeMicroRad;
         /// Blocks after impact before an attack nobody revealed can be expired and refunded.
         uint32 revealGraceBlocks;
