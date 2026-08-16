@@ -140,10 +140,12 @@ create  →  applications  →  deadline  →  in flight  →  impact  →  reve
    of refundable and turns the entry residual into the reward pool.
 4. **Play.** Probe (8-block delay, one in flight per wallet; cone floor 12°),
    then one encrypted Defense Point. Recon closes after that submit.
-5. **Score.** Snapshot at arrival (`submit + climb`): threat still in flight
-   and inside the 0.14-sector radius *then*. Earliest valid arrival wins;
-   exact ties split. A miss sends the unwon pool to **Global Defense**, not
-   back to the creator.
+5. **Score.** Find where. Find when. Intercept it. Snapshot at arrival
+   (`submit + climb`): threat still in flight **and inside the 0.14-sector
+   radius at that instant**. Covering the path and waiting is a miss
+   (TOO EARLY if you arrived before it got there, TOO LATE if after).
+   Earliest valid arrival wins; exact ties split. A miss sends the unwon
+   pool to **Global Defense**, not back to the creator.
 
 Nobody needs to be online for an attack to launch or land. Keepers are
 permissionless.

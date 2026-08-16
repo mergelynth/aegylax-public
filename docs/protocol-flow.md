@@ -209,7 +209,9 @@ valid   = arrival < impact
 
 Radius is `interceptRadiusMilliSectors / 1000` sectors (0.14 in source).
 Twenty accounts may still place twenty points — that is twenty independent
-bets on different moments, not coverage of the path.
+bets on different moments, not coverage of the path. Arrive before the
+threat is at that altitude (TOO EARLY) or after it has passed (TOO LATE)
+and the snapshot misses. Parking on the line does not count.
 
 ### 2.6 Activation — `_activate`
 
@@ -311,7 +313,8 @@ and no claimable reward until somebody noticed the manual button.
 
 Among snapshot hits (`arrival` still in flight and the threat inside the
 radius *then*), the winner set is every attempt whose arrival equals the
-earliest. Exact ties split. Then:
+earliest. Exact ties split. Arriving before the threat is at that
+altitude, or after it has passed, is not in this set.
 
 ```
 winners > 0  → intercepted; rewardPerWinner = rewardPool / winners

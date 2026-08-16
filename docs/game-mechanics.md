@@ -319,8 +319,10 @@ rejects any second `submitDefense` from the same participant.
 
 ### Interception is a snapshot, not a wall
 
-The rule is explicitly **not** "the chord passed through the circle."
-Two conditions, and both are times:
+Find where the attack will be. Find when it will be there. Intercept it.
+
+The rule is explicitly **not** "the chord passed through the circle" and
+not "arrive first and wait." Two conditions, and both are times:
 
 1. **arrival** — submit block plus the climb from Earth's surface to the
    Defense Point, at `defenseSpeedKmPerBlock`;
@@ -328,9 +330,11 @@ Two conditions, and both are times:
    trajectory[arrival]) <= interceptionRadius`. Arrival must still be
    during the flight (`arrival < impact`).
 
-A static line of points covering the path is twenty independent bets on
-different moments, not a guaranteed intercept. The threat occupies one
-place at each arrival. Radius is `0.14` sectors.
+Arrive before the threat reaches that altitude: TOO EARLY (waiting on
+station does not count). Arrive after it has passed: TOO LATE. A static
+line of points covering the path is twenty independent bets on different
+moments, not a guaranteed intercept. The threat occupies one place at
+each arrival. Radius is `0.14` sectors.
 
 Two answers come out of resolution:
 

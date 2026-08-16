@@ -151,11 +151,14 @@ Two conditions, and both are times rather than a chord test:
 2. at that instant, `distance(point, trajectory[arrival])` is inside the
    interception radius (`0.14` sectors).
 
-Among those snapshot hits, the winner is the **earliest arrival**. A
-farm of wallets tiling a static line is twenty independent bets, not a
-wall: at each arrival the threat is in one place. Exact arrival ties
-split the pool. The emulator uses the same rule (`resolveDefense` matches
-`Geometry.evaluateDefense`). There is no "highest intercept" ranking.
+Arrive **before** the threat reaches that altitude and you miss (TOO
+EARLY) — waiting on station is not a hit. Arrive **after** it has passed
+and you miss (TOO LATE). Among those snapshot hits, the winner is the
+**earliest arrival**. A farm of wallets tiling a static line is twenty
+independent bets, not a wall: at each arrival the threat is in one place.
+Exact arrival ties split the pool. The emulator uses the same rule
+(`resolveDefense` matches `Geometry.evaluateDefense`). There is no
+"highest intercept" ranking.
 
 ```
 arrival = submitBlock + climbTime

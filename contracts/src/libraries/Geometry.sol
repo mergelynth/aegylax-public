@@ -202,8 +202,11 @@ library Geometry {
      * The interceptor climbs from the surface after submit. The threat is
      * sampled at that arrival instant — not tested against the whole chord.
      * `intercepted` iff arrival is still during the flight and the moving
-     * point is inside the radius *then*. Ranking (in Resolution) is by that
-     * arrival, so a shorter climb is a different bet, not a better cover.
+     * point is inside the radius *then*. Arriving before the threat reaches
+     * this altitude is a miss (TOO EARLY), the same as arriving after it
+     * has passed (TOO LATE). Parking on the path and waiting is not a hit.
+     * Ranking (in Resolution) is by that arrival, so a shorter climb is a
+     * different bet, not a better cover.
      */
     function evaluateDefense(
         World memory w,

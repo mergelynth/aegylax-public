@@ -21,7 +21,8 @@ import {Geometry} from "./Geometry.sol";
  *                 threat was still in flight and inside the radius. A
  *                 point on the chord at some other time is not a hit:
  *                 twenty accounts on a static line are twenty independent
- *                 bets on different moments, not a wall.
+ *                 bets on different moments, not a wall. Arrive early and
+ *                 wait — miss. Arrive after it passed — miss.
  *   winner      — among those snapshot hits, the earliest *arrival*.
  *                 Exact arrival ties split the pool. Transaction order
  *                 is not a tie-break.

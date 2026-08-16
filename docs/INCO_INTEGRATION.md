@@ -82,10 +82,12 @@ a cone**, not a coordinate; fusion narrows the picture toward `θ + ε`
 and never past a 12° floor. The Defense Point is a sealed commit: one
 per wallet, judged only after reveal.
 
-Scoring runs in the clear on attested values. A hit is a snapshot:
+Scoring runs in the clear on attested values. A hit is a snapshot at
+**where and when**:
 
 `arrival = submit + climb`, still before impact, and the threat at that
-block inside 0.14 sectors of the point. Earliest valid arrival wins.
+block inside 0.14 sectors of the point. Covering the path early and
+waiting is a miss. Earliest valid arrival wins.
 
 Private state is the round. Public state is who paid, who acted, and —
 once Inco has attested — who hit.
