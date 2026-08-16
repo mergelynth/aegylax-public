@@ -79,9 +79,9 @@ remainder (`flown − intercepted`), never a stored counter. A stored one drifte
 | `validActions` | `sendProbe` **and** `submitDefense` | The one fact that separates *played and lost* from *never woke up*. Cannot be `attemptCount`: a team that spent every probe and ran out of time submitted nothing and unquestionably played. |
 | `entryFeesCollected` | joins, minus leaves | Before any fee is split off it. |
 | `probeFeesCollected` | `buyProbes` | Stays inside the operation, inside `rewardPool`. |
-| `creatorFeeAccrued` | fixed once, at activation | Percentage of entry fees. Earned on a hit and a miss alike. |
-| `protocolFeeAccrued` | one seat fee per participant **including the creator** | Moves to `protocolTreasury` at activation; released back on a refunding ending. |
-| `rewardPool` | bounty at mint, `+` probes, `+` entry residual at activation, zeroed if forfeited | What winners share. |
+| `creatorFeeAccrued` | joins, minus leaves | Author commission collected at join. Paid to the creator on COMPLETED. |
+| `protocolFeeAccrued` | the creation fee at mint | Already in `protocolTreasury` from create; never released. |
+| `rewardPool` | bounty at mint, `+` probes, `+` full entries at activation, zeroed if forfeited | What winners share. |
 | `rewardsClaimed` | `claimReward` | So the creator's dust settlement is exact. |
 
 ### Per participant
@@ -101,12 +101,9 @@ two agree only while nothing has changed), `probesPaid`.
    protocol's ranges. This is the copy that decides; the form's is for greying
    out buttons.
 2. **Payment**: `msg.value == startPrizePool + protocolJoinFee`.
-   The seat fee is charged **to the creator**, and this changed. Creating used
-   to be the one way to occupy the protocol without paying it: every joiner
-   paid `entry + joinFee`, the creator only their bounty — so the address that
-   mints the epoch's attack, takes a fee off every entry and (previously) got
-   its bounty back on a miss was the one address the treasury never saw a wei
-   from. The creator holds the first seat; they pay for it.
+   The protocol fee is charged **once, to the creator, at mint**, and is
+   never refunded — even if the room never fills. Joiners pay the author,
+   not the protocol.
 3. `_mintLobby` writes the lobby, and **schedules the threat immediately**:
    `launchEpoch = launchEpochOf(registrationDeadlineBlock)`.
    That is the epoch after the deadline's, except when that next boundary
@@ -134,9 +131,9 @@ two agree only while nothing has changed), `probesPaid`.
 ### 2.2 Joining — `joinLobby`
 
 Requires `OPEN`, `block.number < registrationDeadlineBlock`, room, not already
-joined, and `msg.value == entryPrice + seatFee` **exactly**. The seat fee is
-the protocol join fee on a player-created operation, and **0** on the
-protocol's own Global Defense draw (the pool is already the players' money).
+joined, and `msg.value == entryPrice + authorCommission` **exactly**.
+The commission is `entryPrice × creatorFeeBps / 10000` on a player-created
+operation, and **0** on the protocol's own Global Defense draw.
 The exact match is why the client re-reads the fee off the chain rather than
 using its own ETH float: the contract compares integers and a
 wei → ETH → wei round trip is not guaranteed to land back on the same one.
@@ -149,7 +146,7 @@ and take their money back. Refund is `paidIn`, in full.
 
 | Creator sets | Protocol owns (never on the form) |
 |---|---|
-| name, min/max players, entry price, start prize pool, application deadline, creator fee % | seat fee, probe price, free/max probes, epoch length, sector span, interception radius, grid, defense speed, reveal grace, draw interval |
+| name, min/max players, entry price, start prize pool, application deadline, creator fee % | creation fee, probe price, free/max probes, epoch length, sector span, interception radius, grid, defense speed, reveal grace, draw interval |
 
 Recon is protocol-owned deliberately: the epoch's threat is one object every
 operation is defending against, so what a probe reveals is worth the same
@@ -223,9 +220,9 @@ operation nobody touches is activated by the reveal.
 This is the only moment money changes character:
 
 ```
-creatorFeeAccrued  = entryFeesCollected × creatorFeeBps / 10000
-rewardPool        += entryFeesCollected − creatorFeeAccrued
-protocolTreasury  += protocolFeeAccrued          // now non-refundable
+rewardPool        += entryFeesCollected          // 100% of entries
+// creatorFeeAccrued already holds join commissions
+// protocolTreasury already holds the creation fee from mint
 ```
 
 The entry residual goes into the pool because that is the only destination that
@@ -361,10 +358,9 @@ No valid action from anybody, or too few defenders to start at all
 be the prize of, and charging for it would be charging for a game that never
 started.
 
-- **100% back**: every participant takes `paidIn` — entry, seat fee and probes.
-- Creator takes `startPrizePool + their own seat fee`.
-- `protocolTreasury` gives up this operation's fees, or an owner withdrawal
-  could leave the contract unable to pay refunds it has already promised.
+- **100% back**: every participant takes `paidIn` — entry, author commission and probes. Under-filled rooms are paid in `cancelLobby` itself.
+- Creator takes `startPrizePool` only.
+- The protocol keeps the creation fee.
 
 ### CANCELLED — the protocol failed
 
@@ -404,17 +400,16 @@ It mints an operation owned by the contract:
 - **entry price 0** — it is already the players' own money, forfeited from
   rounds they lost; charging them to play for it back would be selling them
   their own stake twice,
-- **creator fee 0** — nobody owns it,
-- **seat fee 0** — joiners pay nothing to sit in a protocol-owned draw.
+- **creator fee 0** — nobody owns it, so joiners pay no author commission,
+- **join is free** — sitting in a protocol-owned draw costs nothing.
 
 **There is no "the draw failed" branch anywhere, and that is the design.**
 
 - A draw nobody wins is a COMPLETED round with no winner, so `resolveLobby`
   returns its pool to the Global Defense Pool by the same line that filled it,
   and it waits for the next interval.
-- A draw nobody joins is UNPLAYED, and `settleCreator` returns the bounty to the
-  pool because the contract is its creator — permissionless in that case,
-  because the money must find its way home without the owner being online.
+- A draw nobody joins is UNPLAYED, and `cancelLobby` returns the bounty to the
+  pool in the same transaction because the contract is its creator.
 
 The pool is **not** `protocolTreasury` and no owner call can reach it. The
 treasury is revenue; this is players' money the protocol has promised back to
@@ -516,7 +511,7 @@ second `setInterval` sampling `Date.now()` at an unrelated moment.
 ## 9. Deployment note
 
 These rules **are live** on Base Sepolia (proxy in `deployments/84532.json`,
-game `1.3.2`, params version 4). Changing limits is `npm run chain:params`
+game `1.4.0`, params version 4). Changing limits is `npm run chain:params`
 (no redeploy). Changing bytecode is `npm run chain:upgrade`. The draw
 interval is `setGlobalDefenseInterval`, not a `GameParams` field.
 

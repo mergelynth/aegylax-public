@@ -77,8 +77,8 @@ createLobby         binds this operation to `launchEpochOf(deadlineBlock)`
                     nobody has yet, draws that epoch's θ and δ inside Inco;
                     the contract keeps two handles -> LobbyCreated, AttackStarted
 
-startOperation      the money only: fees stop being refundable and the
-   (per operation)  entry residual becomes the pool. Nobody has to send it;
+startOperation      the money only: every wei of entry folds into the pool;
+   (per operation)  author commissions stay accrued. Nobody has to send it;
                     the first in-round action does it (`_activate`)
 
 sendProbe           hint = θ + ε + cellNoise + cellNoise, computed on

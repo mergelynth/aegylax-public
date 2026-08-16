@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
+import {AegylaxStorage} from "../AegylaxStorage.sol";
+import {IAegylaxEvents} from "../interfaces/IAegylaxEvents.sol";
 import {GameTypes} from "./GameTypes.sol";
 
 /**
@@ -9,13 +11,13 @@ import {GameTypes} from "./GameTypes.sol";
  * Every branch here answers the same question from a different seat — the
  * defender's, the creator's — and the answers have to add up to exactly what
  * was paid in, which is why they live together rather than beside the state
- * machine that calls them. Nothing in this library writes: it decides
- * amounts, and `AegylaxGame` decides whether the caller may have them.
+ * machine that calls them.
  *
  * It is an external library for the same reason `ProtocolRules` and
  * `Resolution` are — the game implementation has to fit inside the EVM's
- * contract size limit, and money arithmetic is the kind of self-contained
- * branching that costs the most code for the least state.
+ * contract size limit. Amounts live here; `AegylaxGame` decides whether
+ * the caller may have them. The one write is the under-filled-room
+ * payout, which has to move money in the same transaction as the cancel.
  *
  * **Everything here branches on `Ending`, not on `LobbyStatus`.** The status
  * is a state machine with two terminal values and there are three ways an
@@ -27,24 +29,30 @@ import {GameTypes} from "./GameTypes.sol";
  */
 library Settlement {
     /**
+     * The author's per-joiner commission, charged on top of the entry.
+     *
+     * `creatorFeeBps` is the lobby setting. The protocol's own draw mints
+     * with 0, so sitting in the jackpot costs nothing.
+     */
+    function authorCommission(uint128 entryPrice, uint16 creatorFeeBps) public pure returns (uint256) {
+        return (uint256(entryPrice) * uint256(creatorFeeBps)) / GameTypes.BPS;
+    }
+
+    /// What `joinLobby` demands: the entry plus the author's commission.
+    function joinPayment(uint128 entryPrice, uint16 creatorFeeBps) public pure returns (uint256) {
+        return uint256(entryPrice) + authorCommission(entryPrice, creatorFeeBps);
+    }
+
+    /**
      * What a defender takes back.
      *
-     * UNPLAYED and CANCELLED return `paidIn` — every wei, including the seat
-     * fee and every probe bought. Nothing was consumed: there was no round, so
-     * there is nothing the money can be said to have paid for. The two are
-     * separate endings because one is the room's fault and the other is the
-     * protocol's, but the defender is owed the same thing either way and it
-     * would be strange for that to depend on whose fault it was.
+     * UNPLAYED and CANCELLED return `paidIn` — entry, the author's
+     * commission, and every probe bought. Nothing was consumed: there was no
+     * round, so there is nothing the money can be said to have paid for.
      *
-     * COMPLETED returns nothing at all, and this is the rule that changed.
-     * It used to hand back the entry money after the Creator Fee whenever the
-     * threat got through — which meant a defender who watched the attack land
-     * was refunded most of their stake, and an operation that lost was very
-     * nearly free to have been in. An entry fee that comes back when you lose
-     * is not a stake, and a game whose downside is a rounding error is not a
-     * game. A round that ran is a round that was delivered: the pool goes to
-     * whoever intercepted, and if nobody did it goes to the Global Defense
-     * Pool to be played for again (ТЗ §17-18).
+     * COMPLETED returns nothing at all. A round that ran is a round that was
+     * delivered: the pool goes to whoever intercepted, and if nobody did it
+     * goes to the Global Defense Pool to be played for again (ТЗ §17-18).
      */
     function refundDue(
         GameTypes.Ending ending,
@@ -59,18 +67,17 @@ library Settlement {
     /**
      * What the creator takes back when the round never ran.
      *
-     * Same two endings as `refundDue`, and the same reason: nothing was
-     * delivered, so the bounty and the seat fee they paid at mint come home.
-     * This is what `claimRefund` adds for the creator, so they are not left
-     * on a second button after every defender has already been paid.
+     * The bounty comes home. The protocol fee they paid at mint does not —
+     * that is the protocol's from the moment the operation exists, whether
+     * or not the room ever filled.
      */
-    function creatorRefundDue(
-        GameTypes.Ending ending,
-        GameTypes.LobbyConfig storage config,
-        uint256 creatorJoinFee
-    ) public view returns (uint256) {
+    function creatorRefundDue(GameTypes.Ending ending, GameTypes.LobbyConfig storage config)
+        public
+        view
+        returns (uint256)
+    {
         if (ending == GameTypes.Ending.UNPLAYED || ending == GameTypes.Ending.CANCELLED) {
-            return uint256(config.startPrizePool) + creatorJoinFee;
+            return uint256(config.startPrizePool);
         }
         return 0;
     }
@@ -78,35 +85,24 @@ library Settlement {
     /**
      * The creator's settlement, in one figure whatever happened.
      *
-     * On a round that ran, the Creator Fee is earned on a hit and on a miss
-     * alike — a creator is paid for filling an operation, not for its result —
-     * and that is now the *whole* of what they get. The bounty does not come
-     * back on a miss any more, and neither does the probe money: both are part
-     * of the pool, and an unwon pool belongs to the Global Defense Pool. What
-     * the old rule did was let a creator advertise a prize they only ever paid
-     * out when somebody earned it, which made a large bounty costless to
-     * promise and the advertised pool close to meaningless.
+     * On a round that ran, the author commission collected at join is earned
+     * on a hit and on a miss alike — a creator is paid for filling an
+     * operation, not for its result — and that is the whole of what they get.
+     * The bounty does not come back on a miss: it is part of the pool, and an
+     * unwon pool belongs to the Global Defense Pool.
      *
      * On a round that did not run — UNPLAYED or CANCELLED — the bounty comes
-     * home untouched, along with the creator's own seat fee. `claimRefund`
-     * pays that now (so the creator is on the same button as everybody else);
-     * `settleCreator` still knows the figure so a leftover call cannot strand
-     * the money, and so a protocol-owned draw can return it to the pool.
-     *
-     * `creatorJoinFee` is passed rather than read off the lobby: the lobby's
-     * `protocolFeeAccrued` is the whole room's fees, and only one seat's worth
-     * of it is the creator's.
+     * home untouched. The protocol creation fee stays with the treasury.
      */
     function creatorDue(
         GameTypes.Lobby storage lobby,
         GameTypes.LobbyConfig storage config,
-        GameTypes.Outcome storage outcome,
-        uint256 creatorJoinFee
+        GameTypes.Outcome storage outcome
     ) public view returns (uint256 amount) {
         GameTypes.Ending ending = lobby.ending;
 
         if (ending == GameTypes.Ending.UNPLAYED || ending == GameTypes.Ending.CANCELLED) {
-            return creatorRefundDue(ending, config, creatorJoinFee);
+            return creatorRefundDue(ending, config);
         }
         if (ending != GameTypes.Ending.COMPLETED) return 0;
 
@@ -116,5 +112,51 @@ library Settlement {
             // small to distribute, never left stranded.
             amount += uint256(lobby.rewardPool) - outcome.rewardPerWinner * outcome.winners.length;
         }
+    }
+
+    /**
+     * Pays every defender `paidIn` and returns the bounty to the creator
+     * (or to the Global Defense Pool, when this contract is the creator).
+     *
+     * Used when an under-filled room is cancelled: the players did not get
+     * a game, so their entry and the author's commission come back in this
+     * same transaction. The protocol creation fee is already in the treasury
+     * and stays there.
+     */
+    function payoutUnplayed(AegylaxStorage.GameStorage storage $, bytes32 lobbyId) public {
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
+        address[] storage people = $.lobbyParticipants[lobbyId];
+        for (uint256 i = 0; i < people.length; i++) {
+            GameTypes.Participant storage participant = $.participants[lobbyId][people[i]];
+            if (!participant.joined || participant.refunded) continue;
+            uint256 due = participant.paidIn;
+            if (due == 0) continue;
+            participant.refunded = true;
+            _pay(payable(people[i]), due);
+            emit IAegylaxEvents.RefundClaimed(lobbyId, people[i], due);
+        }
+
+        if (lobby.creatorSettled) return;
+        uint256 bounty = uint256(config.startPrizePool);
+        lobby.creatorSettled = true;
+        if (bounty == 0) return;
+
+        if (lobby.creator == address(this)) {
+            $.globalDefensePool += bounty;
+            emit IAegylaxEvents.DefensePoolFunded(lobbyId, bounty, $.globalDefensePool);
+            return;
+        }
+
+        _pay(payable(lobby.creator), bounty);
+        emit IAegylaxEvents.CreatorSettled(lobbyId, lobby.creator, bounty);
+    }
+
+    error TransferFailed();
+
+    function _pay(address payable to, uint256 amount) private {
+        if (amount == 0) return;
+        (bool ok,) = to.call{value: amount}("");
+        if (!ok) revert TransferFailed();
     }
 }

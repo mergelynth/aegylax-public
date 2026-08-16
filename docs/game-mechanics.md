@@ -25,14 +25,17 @@ CREATED -> OPEN -> READY -> ACTIVE -> RESOLVED
   immediately (shared with every other operation in that epoch).
 - **OPEN**: accepting joins, until the deadline *block*.
 - At the deadline: the operation is under way if
-  `participantCount >= minPlayers`, otherwise it can only be **CANCELLED**
-  so refunds unlock.
-- **OPEN -> ACTIVE** is the money and nothing else — fees stop being
-  refundable and the entry residual becomes the reward pool. Nobody sends
-  it: the first probe or defense of the round settles it on the way past,
-  and a team that never acted is settled by the reveal. The screen follows
-  the *attack* rather than the status byte, so an operation is under way
-  the moment its deadline block passes.
+  `participantCount >= minPlayers`, otherwise it can only be **CANCELLED**.
+  `cancelLobby` pays every joiner back in that same transaction (entry,
+  author commission, probes) and returns the bounty; the protocol keeps
+  the creation fee.
+- **OPEN -> ACTIVE** is the money and nothing else — 100% of entries
+  become the reward pool, and author commissions stay accrued for the
+  creator. Nobody sends it: the first probe or defense of the round
+  settles it on the way past, and a team that never acted is settled by
+  the reveal. The screen follows the *attack* rather than the status
+  byte, so an operation is under way the moment its deadline block
+  passes.
 - **ACTIVE -> RESOLVED** happens at the impact block. That pass compares
   every locked Defense Point against the real trajectory and records the
   verdict. It does *not* publish the geometry (a player asks for that —
@@ -243,28 +246,25 @@ what the private computation already returned, never triangulates several
 probes into a point, and never produces anything opaque enough to read as
 a position.
 
-The picture on the map (`buildReconEstimate`) is three layers of the
-same fused reading, not three guesses:
+The picture on the map (`buildReconEstimate`) is locked to the **first**
+probe. Later readings do not swing that blue cloud onto a new bearing.
 
-- the **cloud** is still a pizza from the launch — every direction the
-  remaining θ-error plus the unknown impact offset still admit. Wide on
-  purpose: this is cover, not a place to sit.
-- the **core** (and, from the second probe, the **trail**) is a kilometre
-  corridor along the estimated inbound. A 46° fan opened at the launch
-  edge covers half the board; a band of a couple of sectors is a search
-  that still cannot be covered by one intercept radius (floor 0.45
-  sectors vs radius 0.14). Fusion cannot pin θ: the floor sits at or
-  above the bias window, so the bright middle converges on `θ + ε`.
+- the **cloud** is a pizza from the first sweep's launch — every
+  direction that cone plus the unknown impact offset still admit.
+- the **core** is a kilometre corridor along that same inbound.
+- from the **second** probe, a **static red blotch** is sampled at random
+  across that cloud (left edge to right). Each further probe adds another
+  blotch, darker and closer to Earth. They stay on the board; they do not
+  follow the flight clock.
 
-### The recon clock (`reconNowPoint`)
+A probe craft flies to the centre of the blotch it is about to leave; the
+first probe, with no blotch yet, still sweeps to the far end of the
+corridor.
 
-While the attack is in flight and a fused estimate exists, the map also
-draws a **red mark** along the corridor — where that bearing says the
-threat *would* be now. It is not the sealed trajectory (ТЗ §3.3). The
-path wanders inside the core (`reconNowPoint`, seeded from the estimate
-so a reload does not invent a new flight), interpolates between blocks
-the same way the countdown does, and pulses a short local ping. After
-reveal the mark is gone; the real chord is `AttackReveal`.
+### The recon clock
+
+The occupancy marks are static. The sealed trajectory is never drawn
+until Reveal (`AttackReveal`).
 
 Switching operations drops the previous lobby, attack and reveal before
 the next read lands, so the scene never keeps the last round's countdown
@@ -363,14 +363,14 @@ On chain (the copy that decides):
 
 - **Start prize pool** — funded by the creator at launch (minimum 0.001 ETH).
 - **Entry** — 0.0005–0.1 ETH, paid by each joiner.
-- **Protocol seat fee** — flat **0.0005 ETH** per seat, including the
-  creator's. Accrues on the lobby, moves to `protocolTreasury` when the
-  operation activates, and is the **only** amount `withdrawProtocolFees`
-  can reach. Over-limit withdrawals revert.
-- **Creator fee** — up to 15% of collected entry fees, claimed via
-  `settleCreator` on a COMPLETED round whether the threat was stopped or not.
-- **Entry residual** — the rest of the entries, folded into `rewardPool` at
-  activation.
+- **Protocol creation fee** — flat **0.0005 ETH**, paid by the author at
+  mint. Goes to `protocolTreasury` immediately and is **never refunded**.
+  The **only** amount `withdrawProtocolFees` can reach.
+- **Creator commission** — up to 15% of the entry, charged to each joiner
+  on top of the entry. Claimed via `settleCreator` on a COMPLETED round
+  whether the threat was stopped or not; refunded to joiners if the room
+  never starts.
+- **Entries** — 100% folded into `rewardPool` at activation.
 - **Probe purchases** — protocol price **0.0002 ETH**; proceeds stay in the
   operation's `rewardPool`.
 
@@ -452,8 +452,8 @@ only while it has something to say:
 
 - **the hero** — only before the operation runs. Title, the operation's
   terms, and the one action a visitor came to take: Join, or — while
-  applications are still open — Leave, which returns the entry fee, the
-  protocol join fee and any Recon Probes bought. Once the lobby goes
+  applications are still open — Leave, which returns the entry, the
+  author's commission and any Recon Probes bought. Once the lobby goes
   ACTIVE the seat is committed and the control is gone.
 - **the grid** — always *drawn*; it is the scene's orientation layer.
   Clickable only once the operation is running (`interactive`), because a

@@ -30,13 +30,8 @@ contract LifecycleTest is AegylaxTest {
     }
 
     /**
-     * ТЗ §17 — the creator pays the protocol's per-seat fee like everybody
-     * else, and paying only the bounty is now short by exactly that fee.
-     *
-     * Creating used to be the one way to occupy the protocol without paying
-     * it: the creator schedules the epoch's attack, takes a fee off every
-     * entry and gets their bounty back on a miss, and the treasury never saw
-     * a wei from them.
+     * ТЗ §17 — the creator pays the protocol's creation fee at mint.
+     * Paying only the bounty is now short by exactly that fee.
      */
     function test_createLobby_chargesTheCreatorTheProtocolFee() public {
         vm.prank(creator);
@@ -45,11 +40,12 @@ contract LifecycleTest is AegylaxTest {
 
         bytes32 lobbyId = createLobby();
         (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
-        // On the operation's books as protocol money, not pool money — so it
-        // reaches the treasury on activation and comes back with everything
-        // else if the operation never runs.
+        // Booked on the operation and already the treasury's — it does not
+        // come back if the operation never runs.
         assertEq(lobby.protocolFeeAccrued, defaultParams().protocolJoinFee);
         assertEq(lobby.rewardPool, POOL);
+        (uint256 treasury,,) = lensOf().getTreasury();
+        assertEq(treasury, defaultParams().protocolJoinFee);
     }
 
     function test_createLobby_rejectsConfigOutsideProtocolLimits() public {
@@ -70,15 +66,16 @@ contract LifecycleTest is AegylaxTest {
         game.createLobby{value: createCost()}(config);
     }
 
-    function test_join_collectsEntryAndProtocolFee() public {
+    function test_join_collectsEntryAndAuthorCommission() public {
         bytes32 lobbyId = createLobby();
         join(lobbyId, alice);
 
         (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
         assertEq(lobby.participantCount, 1);
         assertEq(lobby.entryFeesCollected, ENTRY);
-        // The creator's seat plus alice's.
-        assertEq(lobby.protocolFeeAccrued, defaultParams().protocolJoinFee * 2);
+        // Creation fee only — joiners pay the author, not the protocol.
+        assertEq(lobby.protocolFeeAccrued, defaultParams().protocolJoinFee);
+        assertEq(lobby.creatorFeeAccrued, joinCost() - ENTRY);
 
         GameTypes.Participant memory p = lensOf().getParticipant(lobbyId, alice);
         assertTrue(p.joined);
@@ -141,8 +138,10 @@ contract LifecycleTest is AegylaxTest {
         assertEq(lobby.participantCount, 0);
         assertEq(lobby.entryFeesCollected, 0);
         assertEq(lobby.probeFeesCollected, 0);
+        assertEq(lobby.creatorFeeAccrued, 0);
         // The bounty is untouched; only what the leaver put in came back.
         assertEq(lobby.rewardPool, POOL);
+        assertEq(lobby.protocolFeeAccrued, defaultParams().protocolJoinFee);
     }
 
     function test_leave_rejectsAfterStart() public {
@@ -282,7 +281,7 @@ contract LifecycleTest is AegylaxTest {
         uint256 entryFees = uint256(ENTRY) * 2;
         uint256 creatorFee = (entryFees * 500) / 10_000;
         assertEq(active.creatorFeeAccrued, creatorFee, "fees were not settled");
-        assertEq(active.rewardPool, POOL + entryFees - creatorFee);
+        assertEq(active.rewardPool, POOL + entryFees);
     }
 
     function test_start_locksFeesAndSchedulesAttack() public {
@@ -299,8 +298,9 @@ contract LifecycleTest is AegylaxTest {
         uint256 entryFees = uint256(ENTRY) * 2;
         uint256 creatorFee = (entryFees * 500) / 10_000;
         assertEq(lobby.creatorFeeAccrued, creatorFee);
-        // Everything not taken as a fee stays in the operation, as the pool.
-        assertEq(lobby.rewardPool, POOL + entryFees - creatorFee);
+        // Every wei of entry stays in the operation, as the pool. The
+        // author's commission is a separate payment, already in creatorFeeAccrued.
+        assertEq(lobby.rewardPool, POOL + entryFees);
 
         GameTypes.Attack memory attack = attackOf(lobby.attackId);
         assertEq(attack.impactBlock - attack.launchBlock, defaultParams().epochBlocks);
@@ -369,20 +369,20 @@ contract LifecycleTest is AegylaxTest {
         join(lobbyId, alice);
         closeApplications();
 
+        uint256 aliceBefore = alice.balance;
+        uint256 creatorBefore = creator.balance;
+        (uint256 treasuryBefore,,) = lensOf().getTreasury();
+
         game.cancelLobby(lobbyId);
 
-        (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
-        assertEq(uint8(lobby.status), uint8(GameTypes.LobbyStatus.CANCELLED));
-
-        uint256 aliceBefore = alice.balance;
-        vm.prank(alice);
-        game.claimRefund(lobbyId);
         assertEq(alice.balance, aliceBefore + joinCost());
+        assertEq(creator.balance, creatorBefore + POOL, "bounty back; protocol keeps the creation fee");
+        (uint256 treasuryAfter,,) = lensOf().getTreasury();
+        assertEq(treasuryAfter, treasuryBefore, "creation fee stays with the protocol");
 
-        uint256 creatorBefore = creator.balance;
-        vm.prank(creator);
+        vm.prank(alice);
+        vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
         game.claimRefund(lobbyId);
-        assertEq(creator.balance, creatorBefore + createCost(), "creator refunds launch deposit on the same call");
 
         vm.prank(creator);
         vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
@@ -392,6 +392,7 @@ contract LifecycleTest is AegylaxTest {
         // CANCELLED. The two refund identically and mean different things.
         (GameTypes.Lobby memory ended,,) = lensOf().getLobby(lobbyId);
         assertEq(uint8(ended.ending), uint8(GameTypes.Ending.UNPLAYED));
+        assertEq(uint8(ended.status), uint8(GameTypes.LobbyStatus.CANCELLED));
     }
 
     function test_cancel_rejectedWhenMinimumWasReached() public {
@@ -409,9 +410,6 @@ contract LifecycleTest is AegylaxTest {
         join(lobbyId, alice);
         closeApplications();
         game.cancelLobby(lobbyId);
-
-        vm.prank(alice);
-        game.claimRefund(lobbyId);
 
         vm.prank(alice);
         vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);

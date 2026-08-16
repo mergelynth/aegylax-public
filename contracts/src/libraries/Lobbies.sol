@@ -36,14 +36,19 @@ library Lobbies {
     error DrawNotDue();
     /// Folding a miss into an open draw would overflow `uint128` bounty fields.
     error DrawBountyOverflow();
+    error UnknownLobby();
+    error WrongLobbyStatus();
+    error RegistrationClosed();
+    error NotParticipant();
+    error TransferFailed();
 
     /**
      * An operation, written into storage and bound to its epoch's threat.
      *
      * Shared by the two things that can create one — a player calling
      * `createLobby`, and the protocol opening its own draw — because the only
-     * differences between them are who the creator is and whether a seat fee
-     * was charged. A second copy of this for the protocol's own operation
+     * differences between them are who the creator is and whether a creation
+     * fee was charged. A second copy of this for the protocol's own operation
      * would be a second place for the scheduling rule to drift.
      */
     function mintLobby(
@@ -66,9 +71,9 @@ library Lobbies {
         lobby.status = GameTypes.LobbyStatus.OPEN;
         lobby.paramsVersion = $.paramsVersion;
         lobby.rewardPool = config.startPrizePool;
-        // The creator's own join fee. Deliberately *not* part of `rewardPool`:
-        // it is the protocol's money, not the operation's, and folding it into
-        // the pool would pay it out to whoever intercepted.
+        // The creator's protocol fee. Credited to the treasury at mint, and
+        // booked here so a client can see what the protocol kept. It is
+        // never released, even if the operation never runs.
         lobby.protocolFeeAccrued = seatFee;
 
         /*
@@ -368,5 +373,61 @@ library Lobbies {
             : dayBlocks;
         uint64 openFrom = deadlineBlock > joinBlocks ? deadlineBlock - uint64(joinBlocks) : uint64(0);
         return block.number >= openFrom;
+    }
+
+    /**
+     * Leave before the operation starts (ТЗ §2).
+     *
+     * Legal only while applications are open. What comes out is exactly what
+     * went in — entry, the author's commission and any probes bought.
+     */
+    function leave(AegylaxStorage.GameStorage storage $, bytes32 lobbyId) public {
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        if (lobby.status == GameTypes.LobbyStatus.NONE) revert UnknownLobby();
+        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
+
+        if (lobby.status != GameTypes.LobbyStatus.OPEN) revert WrongLobbyStatus();
+        if (block.number >= config.registrationDeadlineBlock) revert RegistrationClosed();
+
+        GameTypes.Participant storage participant = $.participants[lobbyId][msg.sender];
+        if (!participant.joined) revert NotParticipant();
+
+        uint256 refund = participant.paidIn;
+        uint128 probeRefund = participant.probesPaid;
+        uint256 consumed = uint256(probeRefund) + uint256(config.entryPrice);
+        uint256 commissionPaid = uint256(refund) > consumed ? uint256(refund) - consumed : 0;
+
+        participant.joined = false;
+        participant.paidIn = 0;
+        participant.probesPurchased = 0;
+        participant.probesPaid = 0;
+
+        lobby.participantCount -= 1;
+        lobby.entryFeesCollected -= config.entryPrice;
+        lobby.creatorFeeAccrued -= uint128(commissionPaid);
+        if (probeRefund > 0) {
+            lobby.probeFeesCollected -= probeRefund;
+            lobby.rewardPool -= probeRefund;
+        }
+        _removeParticipant($.lobbyParticipants[lobbyId], msg.sender);
+
+        _pay(payable(msg.sender), refund);
+        emit IAegylaxEvents.PlayerLeft(lobbyId, msg.sender, refund, lobby.participantCount);
+    }
+
+    function _removeParticipant(address[] storage list, address who) private {
+        for (uint256 i = 0; i < list.length; i++) {
+            if (list[i] == who) {
+                list[i] = list[list.length - 1];
+                list.pop();
+                return;
+            }
+        }
+    }
+
+    function _pay(address payable to, uint256 amount) private {
+        if (amount == 0) return;
+        (bool ok,) = to.call{value: amount}("");
+        if (!ok) revert TransferFailed();
     }
 }

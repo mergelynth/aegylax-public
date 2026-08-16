@@ -106,11 +106,11 @@ contract StatsTest is AegylaxTest {
     // -----------------------------------------------------------------
 
     /**
-     * The owner's reach is the join fees and nothing else (ТЗ §17).
+     * The owner's reach is the creation fees and nothing else (ТЗ §17).
      *
      * `getTreasury` publishes both numbers precisely so this is checkable
-     * from an explorer: the withdrawable figure is fed only by the per-join
-     * protocol fee, and the difference between it and the contract's balance
+     * from an explorer: the withdrawable figure is fed only by the creation
+     * fee, and the difference between it and the contract's balance
      * is every operation's prize pool and entry money — which is not the
      * owner's to move, however the withdrawal is called.
      */
@@ -119,10 +119,9 @@ contract StatsTest is AegylaxTest {
 
         (uint256 withdrawable, uint256 balance, uint128 joinFee) = lensOf().getTreasury();
         assertEq(joinFee, defaultParams().protocolJoinFee);
-        // Three seats — two defenders and the creator, who pays the same
-        // per-seat fee (ТЗ §17) — and applications have closed, which is when
-        // the fee stops being refundable and becomes the treasury's.
-        assertEq(withdrawable, uint256(joinFee) * 3);
+        // The creation fee is the treasury's from mint — joiners pay the
+        // author, not the protocol.
+        assertEq(withdrawable, uint256(joinFee));
         assertGt(balance, withdrawable, "the pool and the entry money are not the owner's");
 
         (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);

@@ -96,7 +96,7 @@ If nobody reveals within **`revealGraceBlocks` (5000 on Sepolia,
 
 Who created / joined / left, amounts, deadline, **launch and impact block
 numbers**, that a probe was **bought** or **sent**, that a Defense was
-**submitted**, seat fees, pool, snapshotted params.
+**submitted**, fees, pool, snapshotted params.
 
 The payload is a handle either way — an observer sees *that* a probe or
 a Defense was sent, never the hint or the coordinate.
@@ -130,14 +130,15 @@ create  →  applications  →  deadline  →  in flight  →  impact  →  reve
                  └──────── under-filled: cancel / unplayed, full refunds
 ```
 
-1. **Create.** Prize pool + seat fee. Name, seats, entry, deadline,
-   creator fee — all checked against `ProtocolRules` / `GameParams`.
+1. **Create.** Prize pool + protocol creation fee (kept even if the room
+   never fills). Name, seats, entry, deadline, creator commission % —
+   all checked against `ProtocolRules` / `GameParams`.
    The room binds to `launchEpochOf(deadlineBlock)`. If nobody has yet,
    that epoch's threat is drawn inside Inco.
-2. **Join / leave.** Join pays `entry + seat fee`. Leave only while
+2. **Join / leave.** Join pays `entry + author commission`. Leave only while
    applications are open.
-3. **Activate.** Not a button. The first probe or defense moves fees out
-   of refundable and turns the entry residual into the reward pool.
+3. **Activate.** Not a button. The first probe or defense folds every wei
+   of entry into the reward pool. Author commissions stay with the creator.
 4. **Play.** Probe (8-block delay, one in flight per wallet; cone floor 12°),
    then one encrypted Defense Point. Recon closes after that submit.
 5. **Score.** Find where. Find when. Intercept it. Snapshot at arrival
@@ -155,7 +156,7 @@ permissionless.
 | Status | What happened | Money |
 | --- | --- | --- |
 | **COMPLETED** | The attack flew and the room played | Winners claim `rewardPerWinner`. Miss → jackpot. Creator fee accrues (not the bounty). |
-| **UNPLAYED / CANCELLED** | Too few players, or nobody moved | Everyone refunded, including the creator. |
+| **UNPLAYED / CANCELLED** | Too few players, or nobody moved | Joiners refunded (entry + commission + probes). Creator bounty back. Protocol keeps the creation fee. |
 
 Creator settlement is `Settlement.creatorDue`. The figure stays readable
 after `settleCreator`; `creatorSettled` is only whether the wei has been
@@ -163,8 +164,8 @@ paid.
 
 **Sepolia ranges** (`deployments/84532.json`): 2–9999 players, entry
 0.0005–0.1 ETH, min pool 0.001 ETH, creator fee ≤15%, probe 0.0002 ETH,
-seat fee 0.0005 ETH, epoch 120 blocks (~4 min at 2 s), intercept radius
-0.14 sectors. The seat fee is the **only** thing the owner may withdraw.
+creation fee 0.0005 ETH, epoch 120 blocks (~4 min at 2 s), intercept radius
+0.14 sectors. The creation fee is the **only** thing the owner may withdraw.
 
 ---
 
@@ -252,7 +253,7 @@ plan: what the protocol will do, and what players should expect next.
 
 ### Economy and mechanics
 
-- Tune testnet numbers for real play: seat fee, probe price, jackpot
+- Tune testnet numbers for real play: creation fee, probe price, jackpot
   cadence, interception radius, recon cone.
 - Richer recon (not only a bearing) and more than one Defense Point /
   loadouts.

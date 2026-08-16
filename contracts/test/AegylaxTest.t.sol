@@ -124,16 +124,15 @@ abstract contract AegylaxTest is Test {
         vm.roll(block.number + REGISTRATION_BLOCKS + 1);
     }
 
-    function joinCost() internal view returns (uint256) {
-        return ENTRY + defaultParams().protocolJoinFee;
+    function joinCost() internal pure returns (uint256) {
+        return ENTRY + (uint256(ENTRY) * 500) / 10_000;
     }
 
     /**
-     * The bounty *and* the creator's own protocol fee (ТЗ §17).
+     * The bounty *and* the protocol's creation fee.
      *
-     * The fee is charged once per seat and the creator holds the first one, so
-     * launching an operation costs the pool plus exactly what joining one
-     * costs on top of the entry price.
+     * The fee is charged once, at mint, and never comes back — even if the
+     * room never fills. Launching costs the pool plus that fee.
      */
     function createCost() internal view returns (uint256) {
         return POOL + defaultParams().protocolJoinFee;

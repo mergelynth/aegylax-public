@@ -314,11 +314,10 @@ contract GlobalDefenseTest is AegylaxTest {
         (GameTypes.Lobby memory ended,,) = lensOf().getLobby(drawId);
         assertEq(uint8(ended.ending), uint8(GameTypes.Ending.UNPLAYED));
 
-        // Anybody may settle it, and nothing is paid out to a wallet.
-        uint256 balanceBefore = address(game).balance;
-        vm.prank(bob);
-        game.settleCreator(drawId);
-        assertEq(address(game).balance, balanceBefore, "no wei left the contract");
+        // Cancel pays the bounty back into the pool in the same transaction.
         assertEq(lensOf().getGlobalDefensePool(), pooled);
+        vm.prank(bob);
+        vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
+        game.settleCreator(drawId);
     }
 }

@@ -240,12 +240,12 @@ contract AegylaxLens is AegylaxStorage {
         startPrizePool = config.startPrizePool;
         entryFeesCollected = lobby.entryFeesCollected;
         probeFeesCollected = lobby.probeFeesCollected;
-        creatorFee = lobby.status == GameTypes.LobbyStatus.OPEN
-            ? (uint256(lobby.entryFeesCollected) * uint256(config.creatorFeeBps)) / GameTypes.BPS
-            : lobby.creatorFeeAccrued;
+        creatorFee = lobby.creatorFeeAccrued;
         protocolFee = lobby.protocolFeeAccrued;
+        // While OPEN the bounty sits in `rewardPool` and entries are still
+        // separate. After activation they have already been folded in.
         rewardPool = lobby.status == GameTypes.LobbyStatus.OPEN
-            ? uint256(lobby.rewardPool) + (uint256(lobby.entryFeesCollected) - creatorFee)
+            ? uint256(lobby.rewardPool) + uint256(lobby.entryFeesCollected)
             : lobby.rewardPool;
     }
 

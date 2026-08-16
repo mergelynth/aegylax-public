@@ -310,9 +310,9 @@ contract PayoutsTest is AegylaxTest {
         uint256 creatorBefore = creator.balance;
         vm.prank(creator);
         game.settleCreator(lobbyId);
-        assertEq(creator.balance, creatorBefore + createCost(), "the bounty and the creator's own seat fee");
+        assertEq(creator.balance, creatorBefore + POOL, "the bounty back; protocol keeps the creation fee");
 
-        assertEq(address(game).balance, 0, "every wei paid in came back out");
+        assertEq(address(game).balance, defaultParams().protocolJoinFee, "the creation fee stays with the protocol");
     }
 
     function test_creatorSettlement_isOncePerOperation() public {

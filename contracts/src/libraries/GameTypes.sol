@@ -64,8 +64,8 @@ library GameTypes {
      * UNPLAYED — nobody actually played. No valid action from any
      *   participant, or not enough of them turned up to start at all. The
      *   operation died without an event, so every wei paid into it goes back:
-     *   entries, seat fees and probes alike. Nothing was consumed because
-     *   nothing happened.
+     *   entries, author commissions and probes alike. Nothing was consumed
+     *   because nothing happened. The protocol creation fee stays.
      *
      * CANCELLED — the protocol failed the round. The attack could not be
      *   completed or published, the grace window ran out, and the players are
@@ -133,7 +133,8 @@ library GameTypes {
          * the epoch's one threat is what closes that arbitrage.
          */
         uint128 probePrice;
-        /// Flat protocol fee per join — protocol-owned, never creator-set.
+        /// Flat protocol fee charged to the creator when they mint an operation.
+        /// Never refunded — the treasury's from the moment of creation.
         uint128 protocolJoinFee;
     }
     /*
@@ -216,7 +217,12 @@ library GameTypes {
         // ---- money (wei) ----
         uint128 entryFeesCollected;
         uint128 probeFeesCollected;
+        /// Author commissions collected at join. Paid to the creator on a
+        /// completed round; refunded to joiners if the operation never starts.
         uint128 creatorFeeAccrued;
+        /// The creation fee booked on this operation. Credited to
+        /// `protocolTreasury` at mint and never released, even if the room
+        /// never fills.
         uint128 protocolFeeAccrued;
         /// What winners share: the creator's Start Prize Pool plus probe purchases.
         uint128 rewardPool;
@@ -253,7 +259,8 @@ library GameTypes {
         uint32 defenseIndex;
         bool claimed;
         bool refunded;
-        /// Everything this address paid into the operation — the refund basis.
+        /// Everything this address paid into the operation — entry, the
+        /// author's commission, and every Recon Probe. The refund basis.
         uint128 paidIn;
         /**
          * Of `paidIn`, the part spent on Recon Probes.

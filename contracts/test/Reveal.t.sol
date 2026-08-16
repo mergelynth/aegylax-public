@@ -252,9 +252,8 @@ contract RevealTest is AegylaxTest {
     }
 
     /**
-     * Expiry hands back everything, including the protocol's own fee — so
-     * the contract must still be able to pay every refund it owes after the
-     * owner has swept the treasury.
+     * Expiry hands the players their money back. The protocol creation fee
+     * stays in the treasury, so sweeping it first must not strand a refund.
      */
     function test_expire_leavesTheContractSolvent() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();

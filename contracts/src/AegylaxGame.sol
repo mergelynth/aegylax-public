@@ -134,7 +134,7 @@ contract AegylaxGame is
 
     /// Implementation version — bumped by hand with every deployed implementation.
     function version() external pure virtual returns (string memory) {
-        return "1.3.2";
+        return "1.4.0";
     }
 
     // -----------------------------------------------------------------
@@ -232,26 +232,16 @@ contract AegylaxGame is
         ProtocolRules.validateConfig(config, p, block.timestamp, block.number);
 
         /*
-         * ТЗ §17 — the protocol's fee is charged **once per seat, and the
-         * creator holds a seat.**
-         *
-         * Creating an operation used to be the one way to occupy the protocol
-         * without paying it: every joiner paid `entryPrice + protocolJoinFee`
-         * while the creator paid only their own bounty, so the address that
-         * mints an epoch's attack, takes a Creator Fee off every entry and
-         * gets its bounty back on a miss was also the address the treasury
-         * never saw a wei from. Charging it here closes that, and it is the
-         * honest reading of a *join* fee: the creator is the first party to
-         * the operation, not an outside sponsor of it.
-         *
-         * It rides on the lobby's own `protocolFeeAccrued`, which is what
-         * makes it behave correctly at both endings without a second rule —
-         * it moves to the treasury when the operation activates, and it is
-         * inside the sum a cancelled or unplayed operation gives back.
+         * The protocol's fee is charged once, at creation, and it is never
+         * refunded. Joiners pay the author, not the protocol: their extra
+         * is `creatorFeeBps` of the entry, held until the round starts or
+         * given back if it does not. The creation fee is the treasury's
+         * from this moment, so a cancelled room cannot claw it back.
          */
         if (msg.value != uint256(config.startPrizePool) + uint256(p.protocolJoinFee)) revert IncorrectPayment();
 
         lobbyId = Lobbies.mintLobby($, p, config, msg.sender, p.protocolJoinFee);
+        $.protocolTreasury += p.protocolJoinFee;
     }
 
     function joinLobby(bytes32 lobbyId) external payable whenNotPaused nonReentrant {
@@ -259,7 +249,6 @@ contract AegylaxGame is
         Lobbies.maybeOpenDraw($);
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
         GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
-        GameTypes.GameParams storage p = $.lobbyParams[lobbyId];
 
         if (lobby.status != GameTypes.LobbyStatus.OPEN) revert WrongLobbyStatus();
         // The block, not the timestamp: it is the deadline the attack was
@@ -271,13 +260,13 @@ contract AegylaxGame is
         if (participant.joined) revert AlreadyJoined();
 
         /*
-         * The protocol's own draw is free to sit in. Entry is already 0;
-         * charging the join fee as well would be selling players a ticket
-         * to play for money that was already theirs. A player-created
-         * operation still takes the fee — that is protocol revenue.
+         * Join is the entry plus the author's commission. The protocol's
+         * own draw mints with `creatorFeeBps == 0`, so sitting in the
+         * jackpot is free. The commission is the author's if the round
+         * starts, and the joiner's again if it does not.
          */
-        uint256 seatFee = lobby.creator == address(this) ? 0 : uint256(p.protocolJoinFee);
-        uint256 cost = uint256(config.entryPrice) + seatFee;
+        uint256 commission = Settlement.authorCommission(config.entryPrice, config.creatorFeeBps);
+        uint256 cost = uint256(config.entryPrice) + commission;
         if (msg.value != cost) revert IncorrectPayment();
 
         participant.joined = true;
@@ -287,7 +276,7 @@ contract AegylaxGame is
         $.lobbyParticipants[lobbyId].push(msg.sender);
         lobby.participantCount += 1;
         lobby.entryFeesCollected += config.entryPrice;
-        lobby.protocolFeeAccrued += uint128(seatFee);
+        lobby.creatorFeeAccrued += uint128(commission);
 
         emit PlayerJoined(lobbyId, msg.sender, cost, lobby.participantCount);
     }
@@ -298,49 +287,11 @@ contract AegylaxGame is
      * Legal only while applications are open: once the attack is scheduled
      * the seat is committed, and a defender who could withdraw afterwards
      * would be able to watch the reconnaissance and take their money back.
-     * What comes out is exactly what went in — entry, protocol fee and any
-     * probes bought — because nothing has been consumed yet.
+     *         What comes out is exactly what went in — entry, the author's
+     * commission and any probes bought — because nothing has been consumed yet.
      */
     function leaveLobby(bytes32 lobbyId) external nonReentrant {
-        GameStorage storage $ = _s();
-        GameTypes.Lobby storage lobby = _lobby($, lobbyId);
-        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
-
-        if (lobby.status != GameTypes.LobbyStatus.OPEN) revert WrongLobbyStatus();
-        /*
-         * Applications closing is now a block passing rather than a
-         * transaction landing, so the lobby can sit in OPEN after its
-         * deadline until somebody's first in-round action activates it.
-         * Without this check that gap would be a withdrawal window on an
-         * operation that is already committed to its attack — the exact
-         * thing the status check used to close by accident.
-         */
-        if (block.number >= config.registrationDeadlineBlock) revert RegistrationClosed();
-
-        GameTypes.Participant storage participant = $.participants[lobbyId][msg.sender];
-        if (!participant.joined) revert NotParticipant();
-
-        uint256 refund = participant.paidIn;
-        uint128 probeRefund = participant.probesPaid;
-        uint256 consumed = uint256(probeRefund) + uint256(config.entryPrice);
-        uint256 seatFeePaid = uint256(refund) > consumed ? uint256(refund) - consumed : 0;
-
-        participant.joined = false;
-        participant.paidIn = 0;
-        participant.probesPurchased = 0;
-        participant.probesPaid = 0;
-
-        lobby.participantCount -= 1;
-        lobby.entryFeesCollected -= config.entryPrice;
-        lobby.protocolFeeAccrued -= uint128(seatFeePaid);
-        if (probeRefund > 0) {
-            lobby.probeFeesCollected -= probeRefund;
-            lobby.rewardPool -= probeRefund;
-        }
-        _removeParticipant($.lobbyParticipants[lobbyId], msg.sender);
-
-        _pay(payable(msg.sender), refund);
-        emit PlayerLeft(lobbyId, msg.sender, refund, lobby.participantCount);
+        Lobbies.leave(_s(), lobbyId);
     }
 
     /**
@@ -447,16 +398,11 @@ contract AegylaxGame is
         if (block.number < config.registrationDeadlineBlock) revert RegistrationStillOpen();
         if (lobby.participantCount < config.minPlayers) revert MinPlayersNotReached();
 
-        // Fees stop being refundable here, and only here.
-        uint256 creatorFee = (uint256(lobby.entryFeesCollected) * uint256(config.creatorFeeBps)) / GameTypes.BPS;
-        uint256 residual = uint256(lobby.entryFeesCollected) - creatorFee;
-
-        lobby.creatorFeeAccrued = uint128(creatorFee);
-        // Entry fees left after the Creator Fee stay inside the operation,
-        // as the reward pool — the only destination that neither orphans
-        // them on chain nor quietly hands the creator a second fee.
-        lobby.rewardPool += uint128(residual);
-        $.protocolTreasury += lobby.protocolFeeAccrued;
+        // Fees stop being refundable here, and only here. Author commission
+        // was collected at join (`creatorFeeAccrued`); every wei of entry
+        // goes into the prize. The protocol creation fee is already in the
+        // treasury from `createLobby`.
+        lobby.rewardPool += lobby.entryFeesCollected;
 
         lobby.status = GameTypes.LobbyStatus.ACTIVE;
         lobby.startedAtBlock = uint64(block.number);
@@ -499,6 +445,7 @@ contract AegylaxGame is
          */
         lobby.ending = GameTypes.Ending.UNPLAYED;
         if ($.activeLobbies > 0) $.activeLobbies -= 1;
+        Settlement.payoutUnplayed($, lobbyId);
         emit LobbyCancelled(lobbyId, "minimum defenders not reached");
     }
 
@@ -894,7 +841,6 @@ contract AegylaxGame is
         if (lobby.validActions == 0) {
             lobby.ending = GameTypes.Ending.UNPLAYED;
             lobby.status = GameTypes.LobbyStatus.CANCELLED;
-            _releaseProtocolFees($, lobby);
             emit LobbyCancelled(lobbyId, "no defender ever acted");
         } else {
             lobby.ending = GameTypes.Ending.COMPLETED;
@@ -1054,30 +1000,8 @@ contract AegylaxGame is
         lobby.ending = GameTypes.Ending.CANCELLED;
         if ($.activeLobbies > 0) $.activeLobbies -= 1;
 
-        _releaseProtocolFees($, lobby);
-
         emit AttackExpired(lobbyId, attack.id, "no reveal within grace period");
         emit LobbyCancelled(lobbyId, "no reveal within grace period");
-    }
-
-    /**
-     * Gives the treasury back an operation's seat fees.
-     *
-     * Protocol fees become the treasury's when an operation activates. An
-     * ending that refunds — UNPLAYED or CANCELLED — pays every participant
-     * back everything they put in, seat fee included, so the treasury has to
-     * give up what it was credited or an owner withdrawal could leave the
-     * contract unable to pay refunds it has already promised.
-     *
-     * Clamped rather than trusted: an operation cancelled before it ever
-     * activated was never credited to the treasury in the first place.
-     */
-    function _releaseProtocolFees(GameStorage storage $, GameTypes.Lobby storage lobby) private {
-        if ($.protocolTreasury >= lobby.protocolFeeAccrued) {
-            $.protocolTreasury -= lobby.protocolFeeAccrued;
-        } else {
-            $.protocolTreasury = 0;
-        }
     }
 
     // -----------------------------------------------------------------
@@ -1123,8 +1047,7 @@ contract AegylaxGame is
          */
         uint256 fee;
         if (msg.sender == lobby.creator && !lobby.creatorSettled) {
-            uint256 creatorSeatFee = lobby.creator == address(this) ? 0 : $.lobbyParams[lobbyId].protocolJoinFee;
-            fee = Settlement.creatorDue(lobby, $.lobbyConfigs[lobbyId], outcome, creatorSeatFee);
+            fee = Settlement.creatorDue(lobby, $.lobbyConfigs[lobbyId], outcome);
             if (fee > 0) {
                 lobby.creatorSettled = true;
             }
@@ -1140,11 +1063,9 @@ contract AegylaxGame is
      * The money back, in the two endings that owe any (ТЗ §18).
      *
      * UNPLAYED and CANCELLED both return everything a wallet paid in — entry,
-     * seat fee and probes alike — because in neither case was a round
-     * delivered. The creator is on this same call: the bounty and the seat
-     * fee they paid at mint come back here, so they are not left on a second
-     * button after every defender has already been paid. What separates the
-     * two endings is *whose* failure it was, not what is owed.
+     * the author's commission and probes alike — because in neither case was a
+     * round delivered. The creator is on this same call: the bounty they
+     * funded comes back here. The protocol fee they paid at mint does not.
      *
      * COMPLETED owes nothing, and that is a deliberate change from the rule
      * this replaces. That one refunded the entry money whenever the threat got
@@ -1166,8 +1087,7 @@ contract AegylaxGame is
         }
 
         if (msg.sender == lobby.creator && !lobby.creatorSettled) {
-            uint256 creatorSeatFee = lobby.creator == address(this) ? 0 : $.lobbyParams[lobbyId].protocolJoinFee;
-            uint256 creatorLaunch = Settlement.creatorRefundDue(lobby.ending, $.lobbyConfigs[lobbyId], creatorSeatFee);
+            uint256 creatorLaunch = Settlement.creatorRefundDue(lobby.ending, $.lobbyConfigs[lobbyId]);
             if (creatorLaunch > 0) {
                 amount += creatorLaunch;
                 lobby.creatorSettled = true;
@@ -1202,17 +1122,7 @@ contract AegylaxGame is
         if (lobby.creatorSettled) revert AlreadyClaimed();
         if (lobby.ending == GameTypes.Ending.NONE) revert WrongLobbyStatus();
 
-        /*
-         * The seat fee the creator actually paid, which is not always the
-         * params' figure: the protocol's own draw operation is minted with no
-         * seat fee at all (charging itself a fee it also collects would be
-         * moving money between its own pockets). Reading the parameter here
-         * regardless would refund a fee that was never paid, and every draw
-         * that ended UNPLAYED would leave the contract short by exactly one
-         * seat.
-         */
-        uint256 creatorSeatFee = lobby.creator == address(this) ? 0 : $.lobbyParams[lobbyId].protocolJoinFee;
-        amount = Settlement.creatorDue(lobby, $.lobbyConfigs[lobbyId], $.outcomes[lobbyId], creatorSeatFee);
+        amount = Settlement.creatorDue(lobby, $.lobbyConfigs[lobbyId], $.outcomes[lobbyId]);
         lobby.creatorSettled = true;
         if (amount == 0) revert NothingToClaim();
 
@@ -1292,16 +1202,6 @@ contract AegylaxGame is
     {
         lobby = $.lobbies[lobbyId];
         if (lobby.status == GameTypes.LobbyStatus.NONE) revert UnknownLobby();
-    }
-
-    function _removeParticipant(address[] storage list, address who) private {
-        for (uint256 i = 0; i < list.length; i++) {
-            if (list[i] == who) {
-                list[i] = list[list.length - 1];
-                list.pop();
-                return;
-            }
-        }
     }
 
     function _pay(address payable to, uint256 amount) private {
