@@ -75,6 +75,13 @@ integers, integer ops:
 `MockConfidentialEngine` implements the same interface for Foundry and
 **is not confidential**.
 
+A covalidator `IsReady` of true is the process, not the indexer. Decrypt
+errors that say `failed to check acl` without a delay are a grant that
+has not landed yet. `out of sync: N seconds behind` is their indexer
+late on Base; waiting it out in the client does not catch it up. The
+SPA header compares **Privacy executor block** to the network head from
+that number.
+
 ## How does the game use the private state?
 
 Players never aim at a known path. A probe decrypts a **direction with

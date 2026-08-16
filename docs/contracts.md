@@ -138,9 +138,13 @@ that wants to take one step at a time still can.
 
 `ContractBlockchainClient.performReveal` runs the two-call sequence from
 the browser and `useProtocolKeeper` sends it without being asked, for
-anybody with a stake, with a small retry budget for the covalidator lag
-that makes a first attempt fail. `npm run chain:e2e` runs the protocol
-from a script — worth keeping in step, since it is the same protocol.
+anybody with a stake. A few seconds of covalidator ACL lag (`failed to
+check acl` without a published delay) is still waited out. `out of sync:
+N seconds behind` is their indexer late on the host chain — retrying a
+decrypt will not catch it up, so the client stops and the header's
+**Privacy executor block** turns yellow instead of storming the KMS.
+`npm run chain:e2e` runs the protocol from a script — worth keeping in
+step, since it is the same protocol.
 
 ## Interception and the winner
 
