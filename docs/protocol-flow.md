@@ -18,17 +18,16 @@ Almost every mistake in this codebase has been a confusion between these.
 
 | Clock | What it is | What it decides |
 |---|---|---|
-| **Block number** | `useEpochClock` → `subscribeToBlocks` | **Everything the protocol decides.** Deadlines, epochs, launches, impacts, grace windows. |
+| **Block number** | the chain's own block feed, subscribed once | **Everything the protocol decides.** Deadlines, epochs, launches, impacts, grace windows. |
 | **Block timestamp** | `block.timestamp` on chain | The creator's chosen wall-clock deadline, and Earth's frozen rotation angle after impact. |
-| **Wall clock** | `useCountdownClock` (one 250 ms sample, shared) | **Display only.** Turning "42 blocks" into "01:24" so digits move continuously between blocks. |
+| **Wall clock** | one shared 250 ms sample in the client | **Display only.** Turning "42 blocks" into "01:24" so digits move continuously between blocks. |
 
 Two rules follow, and both are load-bearing:
 
 - **No authoritative state is ever derived from the wall clock.** A countdown
   reaching zero changes nothing; the block arriving does.
-- **Blocks are converted to seconds through one measured rate**
-  (`useBlockRate`). That estimate is module-level state, shared by the whole
-  app. It used to be per-hook, which meant two readouts counting to the *same
+- **Blocks are converted to seconds through one measured rate.** That
+  estimate is single, shared by the whole app. It used to be per-readout, which meant two readouts counting to the *same
   block* divided it by two different numbers — one component that had been
   mounted for ten minutes had converged on 5.4 s/block while a modal that had
   just opened was still on the nominal 2.0 s, and the same eleven blocks read as
@@ -182,6 +181,10 @@ Anything about an operation's *terms* comes from its own copy.
   (anybody may call it; the grant is always to the sender) and legal only after
   `readableAtBlock`. That delay is a protocol rule, not a client wait — a bot
   cannot decrypt the answer in the same block it sent the probe.
+- The hint is **two** noisy angles in one integer — `δ << 32 | θ`, microradians,
+  packed by `ReconRules.packHint` because the confidential layer has no
+  trigonometry. What the sender decrypts is that packed estimate, not the
+  sealed path.
 - The answer is readable by **its owner alone** after the grant. Nothing about
   it exists in plaintext on chain.
 - Each `sendProbe` increments `lobby.validActions`. Collecting does not.
@@ -293,12 +296,12 @@ operation already published simply scores this team.
 > reveal. It now takes `Lobby.outcome` from `getLobby` as soon as that lands,
 > and RESULT SEALED only after `reveal.loaded` with `scored` still false.
 >
-> The reveal is also de-duplicated in `useReveal`: the automatic keeper and the
+> The reveal is also de-duplicated client-side: the automatic keeper and the
 > manual button share one in-flight promise, so pressing Reveal while the keeper
 > is already part-way through no longer starts a second run — which is how one
 > reveal turned into eight wallet prompts.
 
-**Nobody has to press it.** `useProtocolKeeper` sends both transactions on its
+**Nobody has to press it.** The client's keeper sends both transactions on its
 own for anybody with a stake in the operation, up to three attempts per attack
 spaced twelve seconds apart, and the screen picks the result up from its
 ordinary per-block read. The retry budget exists because the likely failure is
@@ -472,11 +475,11 @@ These are the seams to check first when something disagrees with itself.
 
 | Fact | Decided by | Mirrored by | How they stay honest |
 |---|---|---|---|
-| Config legality | `ProtocolRules.validateConfig` | `game/lobby.ts`, the form | The chain re-validates; the frontend copy only greys out buttons. |
+| Config legality | `ProtocolRules.validateConfig` | the client's own copy, in the creation form | The chain re-validates; the frontend copy only greys out buttons. |
 | Protocol limits | contract storage → deployment manifest | `appConfig.protocol` (ENV fallback) | `chain:sync` carries them; ENV is only for a build with no deployment behind it. |
-| Creator settlement | `Settlement.creatorDue` | `codec.creatorSettlementOf` | Same branches. The lens figure is what was (or is) owed — it stays after `creatorSettled`, so a reload does not print 0. The flag is whether the wei has been paid, not whether the amount vanished. |
+| Creator settlement | `Settlement.creatorDue` | the client's read of the same lens figure | Same branches. The lens figure is what was (or is) owed — it stays after `creatorSettled`, so a reload does not print 0. The flag is whether the wei has been paid, not whether the amount vanished. |
 | Ending | contract `resolveLobby` / `cancelLobby` / `expireAttack` | `EmulatorBlockchainClient` | The emulator mirrors the rules; it does **not** simulate the draw (that is a real transaction, not a lazy settlement). |
-| Block → seconds | `useBlockRate` | — | One module-level estimate for the whole app. Was per-hook; that was the bug. |
+| Block → seconds | one measured rate | — | One module-level estimate for the whole app. Was per-hook; that was the bug. |
 
 ---
 
@@ -500,7 +503,7 @@ an otherwise idle page:
    twinkled. The resting field is now a `memo`'d component that renders once;
    the burst is a small overlay on top of it.
 
-Plus two React-side reductions: `useGlobalStats` coalesces in-flight reads and
+Plus two client-side reductions: the stats layer coalesces in-flight reads and
 stores a result only when a figure actually changed (most blocks move nothing —
 attacks resolve on epoch boundaries, and an epoch is a hundred-odd blocks), and
 the Day X timer now reads the app's shared countdown clock instead of owning a

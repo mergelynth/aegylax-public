@@ -83,24 +83,23 @@ close on the last block of the previous epoch and launch on the next.
 
 ## Determinism
 
-Every random-looking value traces back to `game/randomness.ts`:
+**This section is about the in-browser emulator only.** Read the next
+paragraph before drawing any conclusion about a deployed round.
 
-```
-deriveSeed([...inputs]) -> keccak256(...) -> Hash
-createSeededRandom(seed) -> mulberry32 PRNG seeded from that hash
-```
+Every random-looking value the emulator produces traces back to one seed,
+hashed into a small deterministic PRNG. The seed is derived from the lobby
+id, the epoch id, the hash of the block at the epoch's start and a fixed
+salt: same inputs, same attacks, so every client computes an identical
+result independently and tests are reproducible. No unseeded randomness is
+used anywhere in the game logic.
 
-The epoch seed itself is derived from the lobby id, epoch id, the hash of
-the block at the epoch's start, and a fixed salt. Same inputs, same
-seed, same attacks — every client in the lobby computes an identical
-result independently. `Math.random()` does not appear anywhere in
-`game/`.
-
-On chain the trajectory is not this PRNG. `IncoConfidentialEngine`
-draws θ and δ *inside* Inco Lightning; the contract stores handles, not
-plaintext. The emulator still uses the seeded path above so tests stay
-deterministic. Same launch/impact blocks either way — only the secret
-source differs.
+On chain the trajectory is **not** that PRNG, and nothing about it is
+derived from a block hash. `IncoConfidentialEngine` draws θ and δ *inside*
+Inco Lightning with the confidential network's own randomness; the
+contract stores handles, not plaintext, and there is no seed a caller
+could reconstruct. The emulator keeps the seeded path so a local round is
+deterministic. Same launch and impact blocks either way — only the source
+of the secret differs.
 
 ## Trajectory
 

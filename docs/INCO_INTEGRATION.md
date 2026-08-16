@@ -26,7 +26,7 @@ Until after impact:
 | --- | --- |
 | Attack geometry (`θ` launch bearing, `δ` impact offset) | Nobody. Drawn inside Inco; the contract stores two handles. |
 | Per-attack bias `ε` | Nobody. Shared by every probe on that attack so extra wallets cannot average to the true ray. |
-| Probe hint | Only the sender, after `collectProbe` grants decrypt. |
+| Probe hint (`δ_noisy << 32 \| θ_noisy`) | Only the sender, after `collectProbe` grants decrypt. |
 | Defense Point | Only its owner. The chain sees that a point was submitted, not where. |
 
 Always public: who joined, amounts, deadlines, launch and impact
@@ -61,9 +61,12 @@ integers, integer ops:
 - **Generate.** `e.randBounded` draws `θ` and `δ` (impact constrained to
   the visible cap) and the shared `ε`. No block hash, no oracle, no
   protocol key.
-- **Probe.** `hint = θ + ε + cellNoise + cellNoise` via `e.add`. Noise is
-  one draw per sensor cell, so a second probe from the same place is the
-  same reading.
+- **Probe.** Two noisy angles, packed into one handle:
+  `hint = (δ + cellNoise) << 32 | (θ + ε + cellNoise)` via `e.add`. Noise
+  is one draw per sensor cell **and angle**, so a second probe from the
+  same place is the same reading. Packing is what lets a layer with no
+  trigonometry release a corridor rather than a single bearing. The
+  sender decrypts those two angles, never the sealed path.
 - **Grant.** `e.allow` opens exactly one handle to exactly the sender —
   and only after the delay.
 - **Defense.** The coordinate is encrypted in the browser against the
@@ -84,10 +87,10 @@ that number.
 
 ## How does the game use the private state?
 
-Players never aim at a known path. A probe decrypts a **direction with
-a cone**, not a coordinate; fusion narrows the picture toward `θ + ε`
-and never past a 12° floor. The Defense Point is a sealed commit: one
-per wallet, judged only after reveal.
+Players never aim at a known path. A probe decrypts two noisy angles —
+launch bearing and impact offset — not a coordinate. Fusion narrows the
+picture toward `θ + ε` and never past a 12° floor. The Defense Point is
+a sealed commit: one per wallet, judged only after reveal.
 
 Scoring runs in the clear on attested values. A hit is a snapshot at
 **where and when**:

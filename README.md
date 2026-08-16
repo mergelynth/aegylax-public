@@ -57,8 +57,10 @@ inside Inco so the hit always lands on the visible cap.
 
 ### Probe hints — private to the sender, even after impact
 
-A probe answer is **not** the trajectory. It is a noisy bearing, computed
-on ciphertext: `θ + ε + cellNoise`.
+A probe answer is **not** the trajectory. It is two noisy angles computed
+on ciphertext and packed into one integer:
+`(δ + cellNoise) << 32 | (θ + ε + cellNoise)`. That is the estimate the
+protocol releases — a corridor, never the sealed path.
 
 | | |
 | --- | --- |
@@ -255,8 +257,9 @@ plan: what the protocol will do, and what players should expect next.
 
 - Tune testnet numbers for real play: creation fee, probe price, jackpot
   cadence, interception radius, recon cone.
-- Richer recon (not only a bearing) and more than one Defense Point /
-  loadouts.
+- More than one Defense Point / loadouts. (Richer recon has landed: a
+  hint now carries the impact offset as well as the launch bearing, so a
+  reading is a corridor rather than a ray.)
 - Deadline for unclaimed rewards; USDC (or another ERC-20) as the prize
   coin — the contract still settles in native ETH.
 

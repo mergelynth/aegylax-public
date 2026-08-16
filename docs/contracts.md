@@ -81,12 +81,14 @@ startOperation      the money only: every wei of entry folds into the pool;
    (per operation)  author commissions stay accrued. Nobody has to send it;
                     the first in-round action does it (`_activate`)
 
-sendProbe           hint = θ + ε + cellNoise + cellNoise, computed on
-   (per player)     ciphertext. ε is drawn once per attack; cell noise
-                    is one sample per sensor cell, so a second probe
-                    from the same place is the same reading. The handle
-                    is stored, not granted. -> ProbeSent(hintHandle,
-                    readableAtBlock)
+sendProbe           hint = (δ + noise) << 32 | (θ + ε + noise), computed
+   (per player)     on ciphertext and packed by `ReconRules.packHint` —
+                    a layer with no trigonometry can hand back a chord
+                    only as two integers. ε is drawn once per attack and
+                    only on θ; cell noise is one sample per sensor cell
+                    and angle, so a second probe from the same place is
+                    the same reading. The handle is stored, not granted.
+                    -> ProbeSent(hintHandle, readableAtBlock)
 
 collectProbe        after DELAY_BLOCKS, grants the hint to the sender.
    (permissionless) Anybody may collect. -> ProbeHintGranted
@@ -137,7 +139,7 @@ transaction can contain. The four originals stay callable, so a script
 that wants to take one step at a time still can.
 
 `ContractBlockchainClient.performReveal` runs the two-call sequence from
-the browser and `useProtocolKeeper` sends it without being asked, for
+the browser and the client's keeper sends it without being asked, for
 anybody with a stake. A few seconds of covalidator ACL lag (`failed to
 check acl` without a published delay) is still waited out. `out of sync:
 N seconds behind` is their indexer late on the host chain — retrying a

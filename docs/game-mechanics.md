@@ -66,9 +66,9 @@ for everyone else.
 `lobby.id === lobby.creationTxHash` always. There is no separate UUID.
 The emulator generates a deterministic tx hash the same shape a real
 transaction hash would have; a real contract mode would use the actual
-on-chain hash. See `game/gameService.ts#createLobby`.
+on-chain hash. The id is the creation transaction's own hash.
 
-## The playfield (`game/world.ts`)
+## The playfield
 
 One canonical coordinate system that every client agrees on, whatever its
 screen. The field is the grid — `columns x rows` **square** sectors — with
@@ -97,7 +97,7 @@ stylesheet anchors the globe to the *scene's* bottom edge while the grid
 is centred in the scene. Keeping them close is a matter of the picture
 matching the fiction; neither is derived from the other.
 
-## Attacks (`game/attacks.ts`)
+## Attacks
 
 - Launch block = the start of the scheduled epoch; impact block = the
   start of the next one. Flight duration is therefore the epoch interval
@@ -127,8 +127,8 @@ matching the fiction; neither is derived from the other.
 
 ### Hidden state
 
-`generateAttack` returns the attack and its trajectory as two separate
-values, and the emulator stores them in two separate maps. `Attack` has
+Attack generation returns the attack and its trajectory as two separate
+values, kept in two separate places. `Attack` has
 **no trajectory field at all** — there is nothing on the public record to
 forget to strip. The geometry only ever travels as an `AttackRevealData`,
 which the chain refuses to produce before resolution.
@@ -141,7 +141,7 @@ The same applies to Defense Points: `getDefenseAttempts` fills in a point
 only for its own owner, for the whole life of the operation — resolved or
 not. Seeing anyone else's is what the reveal is for.
 
-### Reveal (`gameService.revealAttack` / `getAttackReveal`)
+### Reveal (`revealAttack` / `getAttackReveal`)
 
 The reveal is something a player **does**, once, on behalf of everyone.
 
@@ -164,33 +164,43 @@ So a client opening a resolved operation a week later simply reads the
 trajectory and replays the attack. Only the first visitor to a
 never-revealed round is offered a button.
 
-**TODO**: in a real deployment the sealed half must not be client-side
-state at all. Here it stands in for contract storage the frontend would
-have no way to read.
+On chain the sealed half is exactly that — handles the contract cannot
+read and no client can ask for. The in-browser emulator has no
+confidential network to hold them, so it keeps that half locally and
+withholds it on the same rules; it is a stand-in for storage a frontend
+would never have, and it is not how a deployed round works.
 
-## Recon Probes (`game/recon.ts`)
+## Recon Probes
 
-A probe is **not aimed**. It sweeps the whole working area around Earth,
-and the transaction that sends it carries no sector and no coordinate —
-so the call itself discloses nothing, not even to an observer reading the
-chain. What comes back is a *direction to search in*:
+The first probe is **not aimed**. It sweeps the whole working area around
+Earth, and the transaction that sends it carries no sector and no
+coordinate — so the call itself discloses nothing, not even to an observer
+reading the chain. Every probe after it is pointed into the area the fix
+has already found, and how well it was aimed decides how sharp a reading
+it earns. What comes back is a *corridor to search in*: a noisy launch
+bearing, a noisy impact offset, and the width of the cone that reading
+leaves. Not a point, and not the sealed path.
 
-- `bearingDegrees` — where to look, measured from Earth's centre outward;
-- `uncertaintyDegrees` — the half-width of the cone that bearing leaves;
-- `confidencePercent`;
-- `sectorIds` — the sectors that cone crosses.
+The truth being estimated is the trajectory itself, as the two angles it
+is generated from: θ, the bearing from Earth to the **launch point**, and
+δ, how far around the globe the impact sits from it. The attack runs from
+one to the other, so the whole path lies inside a corridor around that
+chord.
 
-The truth being estimated is the bearing from Earth to the trajectory's
-**launch point**: the attack runs from there down to the planet, so the
-whole path lies inside a cone around it. One probe reports that bearing
-with triangular noise up to `BASE_CONE_DEGREES`, plus a shared offset.
+### The hint is two angles, not a bearing
+
+The confidential layer cannot run trigonometry over ciphertext, so it
+does not hand back a path. It packs the two noisy angles into one integer
+— `δ_noisy << 32 | θ_noisy`, in microradians (`ReconRules.packHint`).
+What the sender decrypts is that packed estimate. ε is added to θ alone
+and drawn once per attack, so averaging cells cancels the cell noise and
+never the bias.
 
 ### The per-attack bias ε
 
 Every probe on one attack also carries a common-mode offset **ε**, drawn
-once for that attack (from the epoch seed in the emulator; inside Inco on
-chain). Extra sensor cells average away their own noise and converge on
-`θ + ε`, never on `θ`. The residual is small — `ATTACK_BIAS_DEGREES` is
+once for that attack inside Inco. Extra sensor cells average away their
+own noise and converge on `θ + ε`, never on `θ`. The residual is small —
 5° — so thinking still pays, and large enough at the launch edge that
 "the highest intercept on the fused bearing" is not a unique hit. A farm
 of wallets cannot cancel it: they share the attack, so they share ε.
@@ -212,9 +222,10 @@ time, not just an allowance.
 
 ### Fusing probes
 
-Probes **combine**; they do not replace each other. `mergeReconProbes`
-takes the precision-weighted circular mean of the bearings — so 350° and
-10° merge to 0° rather than 180° — and the fused cone is
+Probes **combine**; they do not replace each other. Independent bearings
+fuse as a precision-weighted circular mean — so 350° and 10° merge to 0°
+rather than 180° — and the impact offset is fused the same way, from
+readings that actually carried one. The fused cone is
 `1 / sqrt(Σ 1/σᵢ²)`, which for `n` equally good readings is `σ / √n`. Two
 probes leave ~70% of one probe's cone, four leave half. That is a real
 statistical fact rather than a tuned curve, and it is why a second probe
@@ -226,49 +237,72 @@ still a band: the truth is usually inside it, and one intercept radius
 cannot cover the whole remaining uncertainty at the launch edge. Pinning
 the exact target is what Reveal is for.
 
-### The fog (`buildReconFog`)
+### Sector weights
 
-`buildReconFog` turns a fix into a per-sector weight in [0, 1] — a
-Gaussian in the angular distance between the fix's bearing and the
-direction from Earth to that sector, with the fix's own cone as the width.
+A fix turns into a per-sector weight in [0, 1] — a Gaussian in the
+angular distance between the fix's bearing and the direction from Earth to
+that sector, with the fix's own cone as the width.
 Distance from Earth deliberately plays no part: the threat is somewhere
 *along* the bearing, and dimming the far cells would be inventing a range
 estimate no probe produced.
 
-The grid paints those weights as translucent patches and blurs them past
-the cell size, so what the player sees is a continuous field with a
-direction rather than a set of coloured squares. Weak intelligence is a
-broad, soft haze; strong intelligence is a tight, brighter wedge. Extra
-probes sharpen the band; they never erase the 12° floor, and the bright
-centre is **not** a guaranteed trajectory. Reveal is the only thing that
-draws the real chord. This is the privacy boundary in the UI: it renders
-what the private computation already returned, never triangulates several
-probes into a point, and never produces anything opaque enough to read as
-a position.
+Those weights are the machine-readable form of the reading, and what ranks
+"which cells are worth searching first". The *map* no longer paints them
+cell by cell: translucent patches on a grid read as a set of coloured
+squares, and the corridor below says the same thing continuously. Weak intelligence is a
+broad, soft band; strong intelligence is a tight one. Extra probes sharpen
+it; they never erase the 12° floor, and its centre is **not** a guaranteed
+trajectory. Reveal is the only thing that draws the real chord. This is
+the privacy boundary in the UI: it renders what the private computation
+already returned, never triangulates several probes into a point, and
+never produces anything opaque enough to read as a position.
 
-The picture on the map (`buildReconEstimate`) is locked to the **first**
-probe. Later readings do not swing that blue cloud onto a new bearing.
+The picture on the map is built from the **fused** fix, not from the first
+probe. Anchoring it to the opening reading — which
+it used to do, so a noisy third probe could not redraw the corridor — kept
+the drawn cloud at its blind 46° forever and sat it off-centre by that one
+reading's whole error. Precision weighting is what makes fusing safe: a
+wide reading enters the mean at `1/σ²`, so a bad probe nudges the corridor
+rather than swinging it.
 
-- the **cloud** is a pizza from the first sweep's launch — every
-  direction that cone plus the unknown impact offset still admit.
-- the **core** is a kilometre corridor along that same inbound.
-- from the **second** probe, a **static red blotch** is sampled at random
-  across that cloud (left edge to right). Each further probe adds another
-  blotch, darker and closer to Earth. They stay on the board; they do not
-  follow the flight clock.
+- the **cloud** is a corridor along the fused chord — from just past the
+  launch, on the field's edge, down to where the chord meets the globe.
+  Both half-widths come from the error the fix admits to
+  at the launch the reading is an *angle*, so its error
+  opens with range; at the impact it is a position on the rim, so the same
+  error is a much shorter arc. That difference is the trapezoid, and it is
+  derived rather than styled. A fix whose readings never carried δ opens
+  its near end to the protocol's whole approach window. The near corners
+  are projected onto Earth's rim, so the corridor wraps the horizon
+  instead of cutting a straight chord across the planet.
+- from the **second** probe, a **red occupancy mark** per probe, each
+  placed where *that* reading's own snapshot puts the inbound and held
+  inside the corridor it was read from. Sampling a random offset instead —
+  which is what this used to do — drew a convincing pile whose darkest
+  overlap meant nothing. Readings that agree now stack into one dark
+  column and readings that disagree scatter, so the overlap is evidence.
+  They stay on the board; they do not follow the flight clock.
 
-A probe craft flies to the centre of the blotch it is about to leave; the
-first probe, with no blotch yet, still sweeps to the far end of the
-corridor.
+The drawing itself is deliberately edgeless: the corridor
+is stacked as several narrowing, blurred bands rather than one filled
+polygon, because a single shape has a border wherever it ends and a border
+on a probability claims the threat cannot be one pixel outside it. The
+marks' glow is not clipped to the corridor for the same reason — their
+*centres* are what the protocol claims, not the error bar around them.
+
+The scan wave is rings from Earth: the opening probe sweeps the whole
+sky, and every probe after it is cut to the cloud, because reconnaissance
+searches where the earlier readings already point.
 
 ### The recon clock
 
 The occupancy marks are static. The sealed trajectory is never drawn
-until Reveal (`AttackReveal`).
+until Reveal.
 
-Switching operations drops the previous lobby, attack and reveal before
-the next read lands, so the scene never keeps the last round's countdown
-or trajectory under a new URL.
+Once the round is answered the reconnaissance picture comes **off** the
+map entirely — cloud, marks and wave — leaving the trajectory and the
+Defense Points to speak alone. A guess and an answer on one board invite
+the eye to compare a probability with a fact.
 
 ### Where probes live
 
@@ -278,26 +312,16 @@ and closes at the player's own Send Defense, not at impact. Probes are
 therefore useful right through the flight, which is the whole of the play
 between launch and submission.
 
-`useReconProbes` keeps a player's answers in `localStorage`, keyed by
-`recon:v2:{lobbyId}:{attackId}:{address}` so they survive a reload. They
-are stored client-side because they are not chain-readable after the
-grant: a probe's answer is delivered once, after `collectProbe`, as the
-private computation's output to the wallet that sent it. Storing them
-locally keeps the intelligence exactly where it already was — with the
-one player who paid for it. The emulator withholds the plaintext until
-the same delay, so both modes agree on when a reading exists.
+An answer is delivered **once**. `collectProbe` grants decryption to the
+wallet that sent the probe, and after that there is no public read that
+returns it: the plaintext is the private computation's output to one
+player, and the chain never held it.
 
-`useReconFog` holds each new answer back until the blue scan wave has
-crossed the board, so the sweep is what *delivers* the tightened fog
-rather than decoration playing over a change that already happened. Only a
-probe sent from the screen gets a wave; a reload rehydrates silently.
+**TODO**: the opening cone and the confidence ramp are game balance, not
+correctness. The 12° floor is also a balance number, but it is
+load-bearing against ε: it must stay at or above the 5° bias window.
 
-**TODO**: `BASE_CONE_DEGREES` and the confidence ramp are game balance,
-not correctness. `MIN_CONE_DEGREES` is also a balance number, but it is
-load-bearing against ε: it must stay at or above `ATTACK_BIAS_DEGREES`.
-The call shapes are the stable part.
-
-## Defense Points and interception (`game/defense.ts`)
+## Defense Points and interception
 
 A **Defense Point** is a sector plus a fraction along each of that
 sector's own axes — `{ sector, offsetX, offsetY }`. That makes it the
@@ -372,7 +396,7 @@ explain, since the circle visibly caught the line. And the **winner's**
 radius stays green whoever drew it, because that is the circle that ended
 the attack, and it has to be findable in a board full of quiet ones.
 
-## Economics (`game/economics.ts`)
+## Economics
 
 On chain (the copy that decides):
 
@@ -394,7 +418,7 @@ the **Global Defense Pool** — not the creator, not the owner. Cancelled and
 unplayed rounds refund `paidIn` to every participant and return the bounty
 to the creator (or, for a protocol-owned draw, back to the jackpot).
 
-`game/economics.ts` is the emulator's parallel arithmetic so the UI can
+The client keeps parallel arithmetic so the screen can
 preview a cost before a transaction. The contract re-checks every figure.
 
 ### Claim Reward
@@ -414,9 +438,9 @@ inside the 24-hour window before the interval epoch. The UI never calls
 ## Map / sectors
 
 Grid size is `VITE_MAP_GRID_COLUMNS` x `VITE_MAP_GRID_ROWS` (10x5 as
-shipped, so 50 sectors A1..J5) — never hardcoded. `game/map.ts` keeps
+shipped, so 50 sectors A1..J5) — never hardcoded. Sector *labelling* keeps
 the naming layer (`{ column: 1, row: 2 }` <-> `"B3"`); where a sector
-*is* belongs to `game/world.ts`.
+*is* belongs to the world geometry.
 
 The grid is deliberately coarse. It is the player's orientation layer,
 not the game's precision — the Defense Point carries the precision, as a
@@ -428,7 +452,7 @@ sector, so there is no cell it could be counted against. It never reveals the at
 position, and it never reveals anyone's exact Defense Point — only that a
 sector was defended.
 
-### Where the grid is drawn (`game/spaceGrid.ts`)
+### Where the grid is drawn
 
 `buildSpaceGrid` drops cells the globe swallows whole, and
 `buildSceneOutsideEarthPath` produces a field-minus-planet clip path so
@@ -483,19 +507,18 @@ only while it has something to say:
 
 Everything else about the operation stays in the details drawer.
 
-`components/arena/OperationArena.tsx` is the one place the scene is
-measured. The grid, the reveal and Earth's cut-out all have to agree on
-where the globe is and how big a sector is, so one component measures and
-everything below is handed the result.
+The scene is measured in exactly one place. The grid, the reveal and
+Earth's cut-out all have to agree on where the globe is and how big a
+sector is, so one layer measures and everything below is handed the
+result.
 
 The details drawer *floats over* the scene rather than taking a slice out
 of it, so opening or closing it never re-lays the grid, never moves Earth,
 and never shifts a sector out from under the pointer. It does cover the
 right-hand sectors while open — which is why its state is the player's to
-keep, **per operation**. The choice is written to `localStorage` keyed by
-lobby id on every toggle and read back on the next visit to that same
-operation; one global flag would let a decision on one screen silently
-move every other one. An operation nobody has decided about opens,
+keep, **per operation**. The choice is remembered per lobby rather than
+globally: one shared flag would let a decision on one screen silently move
+every other one. An operation nobody has decided about opens,
 because a first-time visitor needs to see what it *is* before the
 playfield means anything. Only the 50 most recently decided operations are
 remembered, so the store cannot grow without bound.
