@@ -357,6 +357,21 @@ The emulator and the chain use the same ranking. The radius is
 protocol-owned, and the same number is used by the frontend's drawing,
 the private computation and the contract's verification.
 
+### How the points are drawn
+
+The grid draws the player's own Defense Point and its interception circle
+in **violet**, before and after the lock. At reveal every other
+participant's point is a quiet **blue-grey**, whatever it did: a full
+lobby puts hundreds of them on the board, and how each one fared is not
+what the viewer came to read.
+
+Two things keep a colour of their own, because in both cases the colour is
+the information. The viewer's own **wrong-time** miss stays amber — TOO
+EARLY and TOO LATE are the one failure a position on the map cannot
+explain, since the circle visibly caught the line. And the **winner's**
+radius stays green whoever drew it, because that is the circle that ended
+the attack, and it has to be findable in a board full of quiet ones.
+
 ## Economics (`game/economics.ts`)
 
 On chain (the copy that decides):
@@ -485,31 +500,54 @@ because a first-time visitor needs to see what it *is* before the
 playfield means anything. Only the 50 most recently decided operations are
 remembered, so the store cannot grow without bound.
 
-The Command Center is a **compact dome** seated inside Earth's visible
-cap, its top edge repeating the planet's curve. Its width is derived from
-the same `clamp(320px, 46vw, 680px)` the globe is drawn at, which is what
-keeps "inside the planet, with even margins, never over the grid" true at
-every viewport size rather than at one.
+The Command Center is a **chamfered glass capsule** seated inside Earth's
+visible cap. Its width and height are derived from the same
+`clamp(320px, 46vw, 680px)` the globe is drawn at, which is what keeps
+"inside the planet, with even margins, never over the grid" true at every
+viewport size rather than at one.
 
-It holds three bubbles and two buttons, and deliberately nothing else —
-no operation phase, no player phase, no epoch, no prose:
+Its frame is two octagons in one SVG over the glass: a static gray outer
+rim, and inside it a notched track. On **`ATTACK_ACTIVE` only**, that
+track carries two neon pulses — one violet, one blue — chasing it opposite
+each other. The console is on screen for far longer than that phase, and
+neon running through an open room, a wait for launch and a finished
+operation that still owes a payout is decoration reporting nothing, so
+every other phase leaves the two gray outlines bare. The pulses are not
+hidden there but absent: the masks and blur filters that draw them are not
+rendered at all, which is also the cheapest thing to paint on the phases
+where the panel is just sitting on the planet.
 
-- **Attack** — the countdown, or ATTACK ACTIVE, or IMPACT; after the
-  window, TARGET REACHED once `Lobby.outcome` is known, RESULT SEALED only
-  after `getAttackReveal` has come back empty.
+It holds two readings and two verbs, and deliberately nothing else — no
+operation phase, no player phase, no epoch, no prose:
+
 - **Recon** — probes ready, probes spent.
 - **Defense** — the coordinate, plus **Estimated arrival: Block N** once a
-  point exists (submit + climb against the fused corridor, never the sealed
-  trajectory). LOCKED after submit; the arrival block is then fixed.
+  point exists, then TOO LATE / TOO EARLY / on the pass (submit + climb
+  against the fused corridor, never the sealed trajectory). Printed in
+  green: pale while the point can still be moved, saturated once it
+  cannot.
 
-Its hierarchy is fixed: **Submit Defense** is a large, lit bubble — the
-most prominent control on the screen, and inactive until a Defense Point
-exists — and **Recon Probe** is a small, cool one with the remaining
-count on its badge. They are not equal siblings.
+Neither reading is housed: no border, no background, no radius. They are
+printed on the glass rather than sat in bubbles, and the submitted lock is
+not a word either — the verb below says SUBMITTED and the reading changes
+tone.
 
-At the end it either becomes **Claim Reward** or goes away entirely; a
-finished, revealed operation with nothing to claim leaves the scene to
-speak for itself rather than parking a panel of dead controls on Earth.
+There is no **Attack** reading here. The countdown and the ending words —
+ATTACK ACTIVE, IMPACT, TARGET REACHED once `Lobby.outcome` is known,
+RESULT SEALED only after `getAttackReveal` has come back empty — belong to
+`AttackCountdown` over the scene. Printing them on the console as well put
+the same fact twice on one screen.
+
+Its hierarchy is fixed: **Defend** is the large ringed control — the most
+prominent thing on the screen, and inactive until a Defense Point exists —
+and **Recon Probe** is a small, cool disc with the remaining count on its
+badge. They are not equal siblings. On a finished operation still waiting
+for somebody to take the reveal, that same large control becomes
+**Reveal**, rather than a second button arriving beside it.
+
+At the end it either becomes **Claim** or goes away entirely; a finished,
+revealed operation with nothing to claim leaves the scene to speak for
+itself rather than parking a panel of dead controls on Earth.
 
 Once the attack has landed, the planet **stops turning and holds the face
 it wore at that moment**, forever, for that operation. The pin is the
