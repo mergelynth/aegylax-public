@@ -340,19 +340,19 @@ abstract contract AegylaxTest is Test {
         GameTypes.Attack memory attack = attackOf(attackId);
         GameTypes.GameParams memory p = defaultParams();
         Geometry.World memory w = Geometry.buildWorld(p.gridColumns, p.gridRows, p.sectorSpanKm);
-        uint256 climbScaled = Geometry.arrivalBlockScaled(w, Geometry.Point(x, y), 0, p.defenseSpeedKmPerBlock);
+        uint256 snapshotScaled = Geometry.arrivalBlockScaled(w, Geometry.Point(x, y), 0, p.defenseSpeedKmPerBlock);
         uint256 passScaled = uint256(attack.launchBlock) * GameTypes.TIME_SCALE
             + (uint256(attack.flightBlocks) * progressPermille * GameTypes.TIME_SCALE) / 1000;
         uint256 submitScaled =
-            passScaled > climbScaled ? passScaled - climbScaled : uint256(attack.launchBlock) * GameTypes.TIME_SCALE;
+            passScaled > snapshotScaled ? passScaled - snapshotScaled : uint256(attack.launchBlock) * GameTypes.TIME_SCALE;
         submitAt = uint64(submitScaled / GameTypes.TIME_SCALE);
         if (submitAt < attack.launchBlock) submitAt = attack.launchBlock;
         if (submitAt >= attack.impactBlock) submitAt = attack.impactBlock - 1;
     }
 
     /**
-     * Submit so climb lands when the threat is at this progress — the
-     * snapshot the protocol actually scores.
+     * Submit when the threat is at this progress — the snapshot the
+     * protocol actually scores.
      */
     function timedSubmitOnTrajectory(bytes32 lobbyId, bytes32 attackId, address who, uint256 progressPermille)
         internal

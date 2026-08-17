@@ -31,11 +31,11 @@ import {Trig} from "./Trig.sol";
  *
  * Interception is a *spacetime* test (ТЗ §5): the threat is a point
  * travelling P_start -> P_target over the flight. A defense succeeds only
- * if, at the interceptor's *arrival* (submit + climb), that moving point
- * sits inside the radius. Being on the chord at some other time is not
- * enough — a wall of points covering the path still miss unless each one
- * arrives at the moment the threat is actually there. Ranking among those
- * hits is the earliest arrival. An exact arrival tie splits the pool.
+ * if, at the submit block, that moving point sits inside the radius.
+ * Being on the chord at some other time is not enough — a wall of points
+ * covering the path still miss unless each one is sent at the moment the
+ * threat is actually there. Every snapshot hit splits the pool. An exact
+ * submit tie is just another split.
  */
 library Geometry {
     using Math for uint256;
@@ -76,7 +76,7 @@ library Geometry {
         int256 interceptX;
         int256 interceptY;
         uint256 missDistanceWu;
-        /// Block ×1e6 at which this interceptor actually arrives at its point.
+        /// Block ×1e6 of the snapshot — the submit block.
         uint256 arrivalBlockScaled;
     }
 
@@ -199,14 +199,12 @@ library Geometry {
     /**
      * One Defense Point against one trajectory (ТЗ §5).
      *
-     * The interceptor climbs from the surface after submit. The threat is
-     * sampled at that arrival instant — not tested against the whole chord.
-     * `intercepted` iff arrival is still during the flight and the moving
-     * point is inside the radius *then*. Arriving before the threat reaches
-     * this altitude is a miss (TOO EARLY), the same as arriving after it
-     * has passed (TOO LATE). Parking on the path and waiting is not a hit.
-     * Ranking (in Resolution) is by that arrival, so a shorter climb is a
-     * different bet, not a better cover.
+     * The threat is sampled at the submit block — not tested against the
+     * whole chord. `intercepted` iff submit is still during the flight and
+     * the moving point is inside the radius *then*. Submitting before the
+     * threat reaches this altitude is a miss (TOO EARLY), the same as
+     * submitting after it has passed (TOO LATE). Parking on the path and
+     * waiting is not a hit. Every snapshot hit splits the pool.
      */
     function evaluateDefense(
         World memory w,
@@ -262,33 +260,23 @@ library Geometry {
     }
 
     /**
-     * When an interceptor placed at `p` is actually on station.
+     * When the snapshot is taken for a point submitted at `submittedAtBlock`.
      *
-     * It launches from the surface directly beneath its Defense Point and
-     * climbs radially, so the distance it covers is the point's altitude
-     * above Earth. Arrival is submit plus that climb — the instant the
-     * snapshot test uses, and the ranking key among valid intercepts.
+     * Arrival is the submit block itself. `w`, `p` and climb speed are kept
+     * on the signature so existing callers and the GameParams layout stay
+     * compatible; they do not move the clock.
      */
-    function arrivalBlockScaled(World memory w, Point memory p, uint64 submittedAtBlock, uint32 defenseSpeedKmPerBlock)
+    function arrivalBlockScaled(World memory, Point memory, uint64 submittedAtBlock, uint32)
         internal
         pure
         returns (uint256)
     {
-        uint256 fromCenter = distance(p, Point(w.centerX, w.centerY));
-        uint256 altitude = fromCenter > uint256(w.radiusWu) ? fromCenter - uint256(w.radiusWu) : 0;
-        if (defenseSpeedKmPerBlock == 0) {
-            return uint256(submittedAtBlock) * TIME_SCALE;
-        }
-        uint256 speedWuPerBlock = uint256(defenseSpeedKmPerBlock) * uint256(WU);
-        // Sub-block resolution: the interceptor arrives partway through a
-        // block, and two defenders are separated by exactly that difference.
-        uint256 travelScaled = (altitude * TIME_SCALE) / speedWuPerBlock;
-        return uint256(submittedAtBlock) * TIME_SCALE + travelScaled;
+        return uint256(submittedAtBlock) * TIME_SCALE;
     }
 
     /**
      * When a moving threat first crosses a circle. Not the intercept test —
-     * that is the snapshot at arrival. Kept so a miss can be told apart from
+     * that is the snapshot at submit. Kept so a miss can be told apart from
      * "wrong time on a path that would have passed through".
      */
     function firstEntry(Point memory a, Point memory b, Point memory center, uint256 radius)

@@ -194,22 +194,21 @@ Anything about an operation's *terms* comes from its own copy.
 The coordinate is encrypted **in the browser**, against the engine's address,
 before the transaction is built. The contract stores a handle; an observer sees
 only that a defense was submitted. One per participant, ever — there is no path
-that overwrites one. Submit also records `submitBlock`; `arrivalBlock =
-submitBlock + climbTime` is derived at reveal from altitude and
-`defenseSpeedKmPerBlock`. Increments `attemptCount` and `validActions`.
+that overwrites one. Submit also records `submitBlock`; the snapshot is
+that block. Increments `attemptCount` and `validActions`.
 Sending a probe after this player's submit reverts: recon is closed for them.
 
 The hit test is a **spacetime snapshot**, not a chord cover:
 
 ```
-arrival = submit + climb
+arrival = submit
 valid   = arrival < impact
       AND distance(point, trajectory[arrival]) <= radius
 ```
 
 Radius is `interceptRadiusMilliSectors / 1000` sectors (0.14 in source).
 Twenty accounts may still place twenty points — that is twenty independent
-bets on different moments, not coverage of the path. Arrive before the
+bets on different moments, not coverage of the path. Submit before the
 threat is at that altitude (TOO EARLY) or after it has passed (TOO LATE)
 and the snapshot misses. Parking on the line does not count.
 
@@ -311,10 +310,10 @@ and no claimable reward until somebody noticed the manual button.
 
 ### 2.9 Scoring — `resolveLobby`
 
-Among snapshot hits (`arrival` still in flight and the threat inside the
-radius *then*), the winner set is every attempt whose arrival equals the
-earliest. Exact ties split. Arriving before the threat is at that
-altitude, or after it has passed, is not in this set.
+Among snapshot hits (`submit` still in flight and the threat inside the
+radius *then*), every attempt is a winner. The pool splits equally.
+Submitting before the threat is at that altitude, or after it has passed,
+is not in this set.
 
 ```
 winners > 0  → intercepted; rewardPerWinner = rewardPool / winners

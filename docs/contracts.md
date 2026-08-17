@@ -152,29 +152,25 @@ step, since it is the same protocol.
 
 Two conditions, and both are times rather than a chord test:
 
-1. the interceptor **arrives** (submit + climb) while the threat is still
+1. the defense **lands** (submit block) while the threat is still
    in flight;
-2. at that instant, `distance(point, trajectory[arrival])` is inside the
+2. at that instant, `distance(point, trajectory[submit])` is inside the
    interception radius (`0.14` sectors).
 
-Arrive **before** the threat reaches that altitude and you miss (TOO
-EARLY) — waiting on station is not a hit. Arrive **after** it has passed
-and you miss (TOO LATE). Among those snapshot hits, the winner is the
-**earliest arrival**. A farm of wallets tiling a static line is twenty
-independent bets, not a wall: at each arrival the threat is in one place.
-Exact arrival ties split the pool. The emulator uses the same rule
-(`resolveDefense` matches `Geometry.evaluateDefense`). There is no
-"highest intercept" ranking.
+Submit **before** the threat reaches that altitude and you miss (TOO
+EARLY) — waiting on station is not a hit. Submit **after** it has passed
+and you miss (TOO LATE). Every snapshot hit is a winner; the pool splits
+equally. A farm of wallets tiling a static line is twenty independent
+bets, not a wall: at each submit the threat is in one place. The emulator
+uses the same rule (`resolveDefense` matches `Geometry.evaluateDefense`).
+There is no "highest intercept" ranking and no race to submit first among
+hits.
 
 ```
-arrival = submitBlock + climbTime
+arrival = submitBlock
 valid   = arrival < impactBlock
       AND distance(point, trajectory[arrival]) <= radius
 ```
-
-An emergent consequence worth knowing: a point very close to the launch
-edge is nearly undefendable, because an interceptor cannot climb that far
-before the threat passes.
 
 ## Parameters
 
@@ -305,22 +301,21 @@ alice  point (6677, 1942) km  miss 34 km   arrival 45354670.6  INTERCEPTED  <- W
 bob    point (7710, 1482) km  miss 525 km  arrival 45354672.4  missed
 ```
 
-Worth reading closely: at Alice's arrival the threat was 34 km away — inside
-the radius — so the snapshot hit. At Bob's arrival it was 525 km away, so
-covering a different part of the chord did not count. Earliest valid arrival
-won. Bob's fused bearing was *closer* to the truth than Alice's, and he still
-missed: he aimed nearer to Earth, where the trajectory has diverged from the
-radial bearing a probe reports, while she aimed high, where it has not. That
-is the geometry teaching a real lesson about how to play, not a quirk of the
-test.
+Worth reading closely: at Alice's submit the threat was 34 km away — inside
+the radius — so the snapshot hit. At Bob's submit it was 525 km away, so
+covering a different part of the chord did not count. Bob's fused bearing was
+*closer* to the truth than Alice's, and he still missed: he aimed nearer to
+Earth, where the trajectory has diverged from the radial bearing a probe
+reports, while she aimed high, where it has not. That is the geometry teaching
+a real lesson about how to play, not a quirk of the test.
 
 ### Local
 
 `contracts/test/` covers the lifecycle, fees and refunds, probe
 allowances, commitment/reveal (including invented trajectories and
 invented Defense Points), hidden-data availability, timing windows,
-interception (snapshot at arrival), multiple defenders, ranking by earliest
-arrival, claims and double
+interception (snapshot at submit), multiple defenders, split among snapshot
+hits, claims and double
 claims, reentrancy, access control, pausing, upgrades and storage
 preservation, plus fuzzed geometry invariants — that a launch point is
 always on the board's edge, that a trajectory never clips Earth, and that

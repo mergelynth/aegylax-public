@@ -89,9 +89,9 @@ contract InterceptionTest is AegylaxTest {
     }
 
     /**
-     * Being on the path is not enough: arrival has to coincide with the
-     * threat being there. Alice times the climb. Bob submits two blocks
-     * before impact and is still climbing after the threat has landed.
+     * Being on the path is not enough: submit has to coincide with the
+     * threat being there. Alice times the pass. Bob submits two blocks
+     * before impact on a point the threat already flew through.
      */
     function test_lateArrival_doesNotIntercept() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
@@ -107,13 +107,13 @@ contract InterceptionTest is AegylaxTest {
 
         GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
         assertTrue(attempts[0].intercepted, "timed defender should intercept");
-        assertFalse(attempts[1].intercepted, "late defender arrives after the threat");
-        assertGe(attempts[1].arrivalBlockScaled, uint256(attack.impactBlock) * GameTypes.TIME_SCALE);
+        assertFalse(attempts[1].intercepted, "late defender submitted after the threat passed");
+        assertLt(attempts[1].arrivalBlockScaled, uint256(attack.impactBlock) * GameTypes.TIME_SCALE);
     }
 
     /**
-     * A point near Earth submitted at launch arrives while the threat is
-     * still high — covering the chord is not a snapshot hit.
+     * A point near Earth submitted at launch is a snapshot while the threat
+     * is still high — covering the chord is not a hit.
      */
     function test_earlyArrivalNearEarth_misses() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
@@ -126,11 +126,11 @@ contract InterceptionTest is AegylaxTest {
     }
 
     /**
-     * Among snapshot hits, earliest arrival wins. Alice times a high
-     * intercept; Bob times a low one. Bob's climb is shorter, but he
-     * arrives later because the threat is not there until later.
+     * Every snapshot hit wins. Alice times a high intercept; Bob times a
+     * low one. Both hit; they split. Alice's submit is earlier, which is
+     * recorded, not a ranking.
      */
-    function test_winner_isTheEarliestArrival_amongSnapshotHits() public {
+    function test_allSnapshotHits_splitThePool() public {
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
 
         timedSubmitOnTrajectory(lobbyId, attackId, alice, 400);
@@ -141,12 +141,18 @@ contract InterceptionTest is AegylaxTest {
         GameTypes.DefenseAttempt[] memory attempts = lensOf().getDefenseAttempts(lobbyId);
         assertTrue(attempts[0].intercepted);
         assertTrue(attempts[1].intercepted);
-        assertLt(attempts[0].arrivalBlockScaled, attempts[1].arrivalBlockScaled, "alice arrives first");
+        assertTrue(attempts[0].isWinner);
+        assertTrue(attempts[1].isWinner);
+        assertLt(attempts[0].arrivalBlockScaled, attempts[1].arrivalBlockScaled, "alice submitted first");
 
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
-        assertEq(outcome.winners.length, 1);
+        assertEq(outcome.winners.length, 2);
         assertEq(outcome.winners[0], alice);
+        assertEq(outcome.winners[1], bob);
         assertEq(outcome.winningArrivalBlockScaled, attempts[0].arrivalBlockScaled);
+
+        (GameTypes.Lobby memory lobby,,) = lensOf().getLobby(lobbyId);
+        assertEq(outcome.rewardPerWinner, uint256(lobby.rewardPool) / 2);
     }
 
     /// Identical arrivals have nothing left to rank by, so the pool splits.
@@ -167,8 +173,8 @@ contract InterceptionTest is AegylaxTest {
         assertEq(outcome.rewardPerWinner, uint256(lobby.rewardPool) / 2);
     }
 
-    /// Several timed intercepts: all snapshot-valid, earliest arrival wins.
-    function test_multipleInterceptors_allRecorded_oneWins() public {
+    /// Several timed intercepts: all snapshot-valid, all win and split.
+    function test_multipleInterceptors_allRecorded_allWin() public {
         bytes32 lobbyId = createLobby();
         join(lobbyId, alice);
         join(lobbyId, bob);
@@ -194,10 +200,11 @@ contract InterceptionTest is AegylaxTest {
             if (attempts[i].isWinner) winners++;
         }
         assertEq(interceptors, 3, "all three timed the snapshot");
-        assertEq(winners, 1, "only the earliest arrival takes it");
+        assertEq(winners, 3, "every snapshot hit takes a share");
 
         (, GameTypes.Outcome memory outcome) = lensOf().getOutcome(lobbyId);
-        assertEq(outcome.winners[0], alice);
+        assertEq(outcome.winners.length, 3);
+        assertEq(outcome.rewardPerWinner, uint256(lobby.rewardPool) / 3);
     }
 
     function test_noDefenders_resolvesAsAMiss() public {

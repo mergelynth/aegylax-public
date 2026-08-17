@@ -95,9 +95,9 @@ a sealed commit: one per wallet, judged only after reveal.
 Scoring runs in the clear on attested values. A hit is a snapshot at
 **where and when**:
 
-`arrival = submit + climb`, still before impact, and the threat at that
+`arrival = submit`, still before impact, and the threat at that
 block inside 0.14 sectors of the point. Covering the path early and
-waiting is a miss. Earliest valid arrival wins.
+waiting is a miss. Every snapshot hit splits the pool.
 
 Private state is the round. Public state is who paid, who acted, and —
 once Inco has attested — who hit.

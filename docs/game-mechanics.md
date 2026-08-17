@@ -217,7 +217,7 @@ hint is computed in that transaction but **not** granted to the sender.
 `collectProbe` opens it after `readableAtBlock`; anybody may collect, and
 the grant is always to the wallet that sent it. Sending another probe
 from the same wallet before that block reverts (`ProbeInFlight`). The
-wait is on chain so a client cannot skip it: reconnaissance costs climb
+wait is on chain so a client cannot skip it: reconnaissance costs wait
 time, not just an allowance.
 
 ### Fusing probes
@@ -226,7 +226,8 @@ Probes **combine**; they do not replace each other. Independent bearings
 fuse as a precision-weighted circular mean — so 350° and 10° merge to 0°
 rather than 180° — and the impact offset is fused the same way, from
 readings that actually carried one. The fused cone is
-`1 / sqrt(Σ 1/σᵢ²)`, which for `n` equally good readings is `σ / √n`. Two
+`1 / sqrt(Σ 1/σᵢ²)`, which for `n` equally good readings is `σ / √n`. The
+opening sweep is `BASE_CONE_DEGREES` (52°). Two
 probes leave ~70% of one probe's cone, four leave half. That is a real
 statistical fact rather than a tuned curve, and it is why a second probe
 is worth sending.
@@ -260,7 +261,7 @@ never produces anything opaque enough to read as a position.
 The picture on the map is built from the **fused** fix, not from the first
 probe. Anchoring it to the opening reading — which
 it used to do, so a noisy third probe could not redraw the corridor — kept
-the drawn cloud at its blind 46° forever and sat it off-centre by that one
+the drawn cloud at its blind opening cone forever and sat it off-centre by that one
 reading's whole error. Precision weighting is what makes fusing safe: a
 wide reading enters the mean at `1/σ²`, so a bad probe nudges the corridor
 rather than swinging it.
@@ -346,35 +347,32 @@ rejects any second `submitDefense` from the same participant.
 Find where the attack will be. Find when it will be there. Intercept it.
 
 The rule is explicitly **not** "the chord passed through the circle" and
-not "arrive first and wait." Two conditions, and both are times:
+not "submit first and wait." Two conditions, and both are times:
 
-1. **arrival** — submit block plus the climb from Earth's surface to the
-   Defense Point, at `defenseSpeedKmPerBlock`;
+1. **submit** — the block the defense transaction lands;
 2. **where the threat is at that instant** — `distance(point,
-   trajectory[arrival]) <= interceptionRadius`. Arrival must still be
-   during the flight (`arrival < impact`).
+   trajectory[submit]) <= interceptionRadius`. Submit must still be
+   during the flight (`submit < impact`).
 
-Arrive before the threat reaches that altitude: TOO EARLY (waiting on
-station does not count). Arrive after it has passed: TOO LATE. A static
+Submit before the threat reaches that altitude: TOO EARLY (waiting on
+station does not count). Submit after it has passed: TOO LATE. A static
 line of points covering the path is twenty independent bets on different
 moments, not a guaranteed intercept. The threat occupies one place at
-each arrival. Radius is `0.14` sectors.
+each submit. Radius is `0.14` sectors.
 
 Two answers come out of resolution:
 
-- `status: 'intercepted'` — at this interceptor's arrival the threat was
+- `status: 'intercepted'` — at this interceptor's submit the threat was
   inside the radius. Covering the chord at some other time is a miss
   (too early or too late).
-- `isWinner` — among those snapshot hits, the **earliest arrival**.
-  Exact arrival ties split the pool.
+- `isWinner` — every snapshot hit. The pool splits equally.
 
-After reveal the Result HUD says YOU HIT only for `isWinner`. A later
-snapshot hit, or a circle the threat passed at the wrong time, is TOO LATE
-or TOO EARLY — not a second winner. WINNERS is `outcome.winners.length`.
+After reveal the Result HUD says YOU HIT for every `isWinner`. A circle
+the threat passed at the wrong time is TOO LATE or TOO EARLY. WINNERS is
+`outcome.winners.length`.
 
-The player is choosing a position **and** a moment of arrival, not a
-circle that covers the path. Recon → forecast → risk → submit → climb →
-arrival → interception.
+The player is choosing a position **and** a moment, not a circle that
+covers the path. Recon → forecast → risk → submit → interception.
 
 The emulator and the chain use the same ranking. The radius is
 `DEFENSE_INTERCEPTION_RADIUS` (in sectors) times `sectorSpanKm`,
@@ -544,9 +542,9 @@ It holds two readings and two verbs, and deliberately nothing else — no
 operation phase, no player phase, no epoch, no prose:
 
 - **Recon** — probes ready, probes spent.
-- **Defense** — the coordinate, plus **Estimated arrival: Block N** once a
-  point exists, then TOO LATE / TOO EARLY / on the pass (submit + climb
-  against the fused corridor, never the sealed trajectory). Printed in
+- **Defense** — the coordinate, plus **At submit: Block N** once a
+  point exists, then TOO LATE / TOO EARLY / on the pass (submit against
+  the fused corridor, never the sealed trajectory). Printed in
   green: pale while the point can still be moved, saturated once it
   cannot.
 

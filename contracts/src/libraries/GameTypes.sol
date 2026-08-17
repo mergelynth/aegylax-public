@@ -97,7 +97,7 @@ library GameTypes {
         /// Blocks per epoch. An attack launches on one boundary and impacts on the next,
         /// so this is also the full flight time T_attack (ТЗ §4).
         uint32 epochBlocks;
-        /// How fast an interceptor climbs to its Defense Point, km per block (ТЗ §5).
+        /// Unused in scoring (snapshot is the submit block). Kept in the params layout.
         uint32 defenseSpeedKmPerBlock;
         /**
          * Angular jitter half-width, in microradians, added independently to

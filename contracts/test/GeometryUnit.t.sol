@@ -156,7 +156,7 @@ contract GeometryUnitTest is Test {
         assertFalse(entered);
     }
 
-    function test_snapshotAtArrivalIsTheIntercept() public pure {
+    function test_snapshotAtSubmitIsTheIntercept() public pure {
         Geometry.World memory w = world();
         GameTypes.Trajectory memory traj;
         traj.startX = 0;
@@ -168,26 +168,24 @@ contract GeometryUnitTest is Test {
 
         Geometry.DefenseEvaluation memory early =
             Geometry.evaluateDefense(w, traj, p, radius, 1000, 150, 1000, 250);
-        assertFalse(early.intercepted, "submit at launch arrives before the threat");
+        assertFalse(early.intercepted, "submit at launch is before the threat");
 
-        uint256 climb = Geometry.arrivalBlockScaled(w, p, 0, 250);
         uint256 passScaled = uint256(1000) * GameTypes.TIME_SCALE + (uint256(150) * GameTypes.TIME_SCALE) / 2;
-        uint64 submitAt = uint64((passScaled - climb) / GameTypes.TIME_SCALE);
+        uint64 submitAt = uint64(passScaled / GameTypes.TIME_SCALE);
         Geometry.DefenseEvaluation memory timed =
             Geometry.evaluateDefense(w, traj, p, radius, 1000, 150, submitAt, 250);
-        assertTrue(timed.intercepted, "timed arrival meets the threat");
+        assertTrue(timed.intercepted, "submit when the threat is there");
         assertEq(timed.interceptionBlockScaled, timed.arrivalBlockScaled);
     }
 
-    function test_arrivalTimeGrowsWithAltitude() public pure {
+    function test_arrivalEqualsSubmitRegardlessOfAltitude() public pure {
         Geometry.World memory w = world();
 
-        // Just above the surface versus the top of the board.
         uint256 near = Geometry.arrivalBlockScaled(w, Geometry.Point(w.centerX, w.heightWu), 100, 250);
         uint256 far = Geometry.arrivalBlockScaled(w, Geometry.Point(w.centerX, 0), 100, 250);
-        assertGt(far, near);
+        assertEq(near, uint256(100) * GameTypes.TIME_SCALE);
+        assertEq(far, near);
 
-        // And submitting later moves the arrival later by exactly that much.
         uint256 laterSubmission = Geometry.arrivalBlockScaled(w, Geometry.Point(w.centerX, 0), 110, 250);
         assertEq(laterSubmission - far, 10 * GameTypes.TIME_SCALE);
     }

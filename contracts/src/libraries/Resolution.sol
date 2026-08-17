@@ -14,18 +14,16 @@ import {Geometry} from "./Geometry.sol";
  * are) or arrives with a covalidator signature over it (the trajectory
  * angles, the coordinates). Nothing here trusts a caller.
  *
- * Two distinct facts come out of every defense, and keeping them apart is
- * the whole of the ranking rule:
+ * Two distinct facts come out of every defense:
  *
- *   intercepted — at this interceptor's arrival (submit + climb), the
- *                 threat was still in flight and inside the radius. A
- *                 point on the chord at some other time is not a hit:
- *                 twenty accounts on a static line are twenty independent
- *                 bets on different moments, not a wall. Arrive early and
- *                 wait — miss. Arrive after it passed — miss.
- *   winner      — among those snapshot hits, the earliest *arrival*.
- *                 Exact arrival ties split the pool. Transaction order
- *                 is not a tie-break.
+ *   intercepted — at this interceptor's submit block, the threat was
+ *                 still in flight and inside the radius. A point on the
+ *                 chord at some other time is not a hit: twenty accounts
+ *                 on a static line are twenty independent bets on
+ *                 different moments, not a wall. Submit early and wait —
+ *                 miss. Submit after it passed — miss.
+ *   winner      — every snapshot hit. The pool splits equally among them.
+ *                 Transaction order is not a ranking.
  */
 library Resolution {
     error InvalidDecryptionProof(uint256 index);
@@ -47,7 +45,7 @@ library Resolution {
         Context memory ctx,
         GameTypes.DecryptionProof[] memory proofs
     ) public {
-        uint256 bestArrival = type(uint256).max;
+        uint256 firstHit = type(uint256).max;
 
         for (uint256 i = 0; i < list.length; i++) {
             GameTypes.DefenseAttempt storage attempt = list[i];
@@ -80,20 +78,13 @@ library Resolution {
             attempt.interceptY = ev.interceptY;
             attempt.missDistanceWu = ev.missDistanceWu;
 
-            if (ev.intercepted && ev.arrivalBlockScaled < bestArrival) {
-                bestArrival = ev.arrivalBlockScaled;
-            }
-        }
-
-        if (bestArrival == type(uint256).max) return;
-        outcome.winningArrivalBlockScaled = bestArrival;
-
-        for (uint256 i = 0; i < list.length; i++) {
-            GameTypes.DefenseAttempt storage attempt = list[i];
-            if (!attempt.intercepted || attempt.arrivalBlockScaled != bestArrival) continue;
+            if (!ev.intercepted) continue;
 
             attempt.isWinner = true;
             outcome.winners.push(attempt.participant);
+            if (ev.arrivalBlockScaled < firstHit) {
+                firstHit = ev.arrivalBlockScaled;
+            }
             if (
                 outcome.interceptionBlockScaled == 0
                     || attempt.interceptionBlockScaled < outcome.interceptionBlockScaled
@@ -102,6 +93,10 @@ library Resolution {
                 outcome.interceptX = attempt.interceptX;
                 outcome.interceptY = attempt.interceptY;
             }
+        }
+
+        if (firstHit != type(uint256).max) {
+            outcome.winningArrivalBlockScaled = firstHit;
         }
     }
 }

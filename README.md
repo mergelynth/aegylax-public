@@ -141,13 +141,13 @@ create  →  applications  →  deadline  →  in flight  →  impact  →  reve
    applications are open.
 3. **Activate.** Not a button. The first probe or defense folds every wei
    of entry into the reward pool. Author commissions stay with the creator.
-4. **Play.** Probe (8-block delay, one in flight per wallet; cone floor 12°),
+4. **Play.** Probe (8-block delay, one in flight per wallet; opening sweep 52°, cone floor 12°),
    then one encrypted Defense Point. Recon closes after that submit.
-5. **Score.** Find where. Find when. Intercept it. Snapshot at arrival
-   (`submit + climb`): threat still in flight **and inside the 0.14-sector
+5. **Score.** Find where. Find when. Intercept it. Snapshot at submit:
+   threat still in flight **and inside the 0.14-sector
    radius at that instant**. Covering the path and waiting is a miss
-   (TOO EARLY if you arrived before it got there, TOO LATE if after).
-   Earliest valid arrival wins; exact ties split. A miss sends the unwon
+   (TOO EARLY if you submitted before it got there, TOO LATE if after).
+   Every snapshot hit splits the prize. A miss sends the unwon
    pool to **Global Defense**, not back to the creator.
 
 Nobody needs to be online for an attack to launch or land. Keepers are
