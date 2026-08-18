@@ -192,14 +192,14 @@ Every unwon COMPLETED pool. Players' money in escrow. **The owner cannot
 withdraw it.**
 
 Every `globalDefenseEpochInterval` epochs (**1000** on Sepolia) the
-protocol opens its own operation: free, no creator fee, the accumulated
-pool as bounty, cap = live `maxPlayers` (9999), frozen at mint. Later
-misses still grow that bounty until the threat launches.
+protocol opens its own operation: free, no creator fee, playing for the
+accumulated pool, cap = live `maxPlayers` (9999), frozen at mint. The wei
+stay in the pool until the round starts, so an under-filled room cannot
+hide the jackpot. Later misses during the join window still grow that pile.
 
 - Intercept → take the pool.
 - Miss → same miss rule, pool comes back.
-- Nobody joins → UNPLAYED returns the bounty to the pool (the contract
-  is the creator).
+- Nobody joins → UNPLAYED; the bounty never left the idle pool.
 
 Opens as a side effect of ordinary play inside the join window
 (`maybeOpenDraw`). There is no privileged `openGlobalDefense` for the UI.

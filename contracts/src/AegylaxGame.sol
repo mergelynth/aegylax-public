@@ -134,7 +134,7 @@ contract AegylaxGame is
 
     /// Implementation version — bumped by hand with every deployed implementation.
     function version() external pure virtual returns (string memory) {
-        return "1.5.0";
+        return "1.7.0";
     }
 
     // -----------------------------------------------------------------
@@ -312,6 +312,7 @@ contract AegylaxGame is
      */
     function buyProbes(bytes32 lobbyId, uint16 count) external payable whenNotPaused nonReentrant {
         GameStorage storage $ = _s();
+        Lobbies.maybeOpenDraw($);
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
 
         /*
@@ -365,7 +366,7 @@ contract AegylaxGame is
      * operation was created and flies on its own; all that is left here is
      * the money — the Creator Fee and the protocol fee stop being
      * refundable, and the entry residual becomes the reward pool — and that
-     * is settled by whichever transaction needs it first (`_activate`). The
+     * is settled by whichever transaction needs it first (`Lobbies.activate`). The
      * function stays because the transition is worth being able to trigger
      * deliberately, and because an operation whose players never act still
      * has to be able to reach ACTIVE before it can be scored.
@@ -373,41 +374,7 @@ contract AegylaxGame is
     function startOperation(bytes32 lobbyId) external whenNotPaused nonReentrant {
         GameStorage storage $ = _s();
         _lobby($, lobbyId);
-        _activate($, lobbyId);
-    }
-
-    /**
-     * OPEN -> ACTIVE, once, whenever somebody first needs it to have
-     * happened.
-     *
-     * This is the whole of what used to be `startOperation`, minus the
-     * scheduling: applications are over, enough defenders came, and the
-     * money moves out of refundable into committed. Every in-round entry
-     * point calls it, so the first probe or defense of the round pays for
-     * the transition as a side effect of an action the player was taking
-     * anyway — and an operation nobody touches is settled by the reveal.
-     *
-     * Idempotent by status: an operation already past OPEN returns
-     * untouched, which is what makes it safe to call from everywhere.
-     */
-    function _activate(GameStorage storage $, bytes32 lobbyId) private {
-        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
-        if (lobby.status != GameTypes.LobbyStatus.OPEN) return;
-
-        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
-        if (block.number < config.registrationDeadlineBlock) revert RegistrationStillOpen();
-        if (lobby.participantCount < config.minPlayers) revert MinPlayersNotReached();
-
-        // Fees stop being refundable here, and only here. Author commission
-        // was collected at join (`creatorFeeAccrued`); every wei of entry
-        // goes into the prize. The protocol creation fee is already in the
-        // treasury from `createLobby`.
-        lobby.rewardPool += lobby.entryFeesCollected;
-
-        lobby.status = GameTypes.LobbyStatus.ACTIVE;
-        lobby.startedAtBlock = uint64(block.number);
-
-        emit OperationStarted(lobbyId, lobby.epochId, uint64(block.number));
+        Lobbies.activate($, lobbyId);
     }
 
     /**
@@ -419,7 +386,11 @@ contract AegylaxGame is
      * see that library for why the draw needs no failure branch of its own.
      */
     function openGlobalDefense() external whenNotPaused nonReentrant returns (bytes32 lobbyId, uint32 epochId) {
-        return Lobbies.openDraw(_s());
+        GameStorage storage $ = _s();
+        // Close a leftover under-filled room first so the next interval
+        // can mint without that lobby still sitting OPEN.
+        Lobbies.maybeCloseDraw($);
+        return Lobbies.openDraw($);
     }
 
     /// Applications closed without enough defenders: everybody gets their money back.
@@ -434,19 +405,7 @@ contract AegylaxGame is
         if (block.number < config.registrationDeadlineBlock) revert RegistrationStillOpen();
         if (lobby.participantCount >= config.minPlayers) revert MinPlayersNotReached();
 
-        lobby.status = GameTypes.LobbyStatus.CANCELLED;
-        /*
-         * ТЗ §18 — UNPLAYED rather than CANCELLED. Nothing went wrong with the
-         * protocol: the room simply never filled, so no round was ever
-         * started and everybody takes their money back. Calling this a
-         * cancellation would put it in the same bucket as an operation the
-         * protocol failed to run, which is a claim about us rather than about
-         * the turnout.
-         */
-        lobby.ending = GameTypes.Ending.UNPLAYED;
-        if ($.activeLobbies > 0) $.activeLobbies -= 1;
-        Settlement.payoutUnplayed($, lobbyId);
-        emit LobbyCancelled(lobbyId, "minimum defenders not reached");
+        Lobbies.closeUnfilled($, lobbyId);
     }
 
     // -----------------------------------------------------------------
@@ -485,14 +444,15 @@ contract AegylaxGame is
         returns (bytes32 hintHandle)
     {
         GameStorage storage $ = _s();
+        Lobbies.maybeOpenDraw($);
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
         GameTypes.GameParams storage p = $.lobbyParams[lobbyId];
 
         // The first player to act in the round is also the one who settles
-        // the operation's money — see `_activate`. It costs them nothing
+        // the operation's money — see `Lobbies.activate`. It costs them nothing
         // they were not already paying for, and it means nobody has to have
         // sent a transaction beforehand for the round to be playable.
-        _activate($, lobbyId);
+        Lobbies.activate($, lobbyId);
         if (lobby.status != GameTypes.LobbyStatus.ACTIVE) revert WrongLobbyStatus();
         GameTypes.Participant storage participant = $.participants[lobbyId][msg.sender];
         if (!participant.joined) revert NotParticipant();
@@ -580,10 +540,11 @@ contract AegylaxGame is
         returns (uint32 attemptIndex)
     {
         GameStorage storage $ = _s();
+        Lobbies.maybeOpenDraw($);
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
 
         // Same as `sendProbe`: acting in the round is what starts it.
-        _activate($, lobbyId);
+        Lobbies.activate($, lobbyId);
         if (lobby.status != GameTypes.LobbyStatus.ACTIVE) revert WrongLobbyStatus();
         GameTypes.Participant storage participant = $.participants[lobbyId][msg.sender];
         if (!participant.joined) revert NotParticipant();
@@ -783,7 +744,7 @@ contract AegylaxGame is
          * does — otherwise a team that watched the attack land without
          * acting could never be scored at all.
          */
-        _activate($, lobbyId);
+        Lobbies.activate($, lobbyId);
         if (lobby.status != GameTypes.LobbyStatus.ACTIVE) revert WrongLobbyStatus();
 
         GameTypes.DefenseAttempt[] storage list = $.attempts[lobbyId];
@@ -949,6 +910,7 @@ contract AegylaxGame is
         GameTypes.DecryptionProof[] calldata defenseProofs
     ) external nonReentrant {
         GameStorage storage $ = _s();
+        Lobbies.maybeOpenDraw($);
         GameTypes.Lobby storage lobby = _lobby($, lobbyId);
         GameTypes.Attack storage attack = $.attacks[lobby.attackId];
         if (attack.id == bytes32(0)) revert UnknownAttack();

@@ -125,35 +125,37 @@ contract GlobalDefenseTest is AegylaxTest {
 
         (GameTypes.Lobby memory draw, GameTypes.LobbyConfig memory config,) = lensOf().getLobby(drawId);
         assertEq(draw.creator, address(game), "the protocol owns its own draw");
-        assertEq(draw.rewardPool, pooled, "the whole pool is the bounty");
         assertEq(config.entryPrice, 0, "free to enter: it is already the players' money");
         assertEq(config.creatorFeeBps, 0, "nobody takes a cut of it");
         assertEq(config.maxPlayers, defaultParams().maxPlayers, "draw uses the protocol ceiling, not a smaller cap");
         assertEq(draw.epochId, nextEpoch);
 
-        // Drained as it moves, so the pool and the operation never both hold it.
-        assertEq(lensOf().getGlobalDefensePool(), 0);
+        // Drained only when the round starts, so an under-filled room cannot
+        // hide the jackpot. The advertised bounty is still the pool.
+        assertEq(draw.rewardPool, 0);
+        assertEq(config.startPrizePool, 0);
+        assertEq(lensOf().getGlobalDefensePool(), pooled);
 
         vm.expectRevert(Lobbies.DrawAlreadyOpen.selector);
         game.openGlobalDefense();
     }
 
     /**
-     * A miss during the join window grows the open draw, not the next pile.
+     * A miss during the join window grows the idle pool, not a frozen
+     * mint-time figure on the lobby.
      *
-     * Opening used to freeze the bounty at mint, so a later miss sat in the
-     * idle pool until the following interval while the trophy still showed
-     * the mint-time figure. The money is the same money; this room should
-     * be playing for it until the threat launches.
+     * The wei never leave `globalDefensePool` until `_activate`, so later
+     * misses land on the same pile the trophy already reads. Escrow happens
+     * when enough defenders start the round.
      */
     function test_draw_missDuringJoinWindow_growsTheOpenBounty() public {
         uint256 first = _forfeitOnePool();
         (bytes32 drawId,) = openDrawWhenDue();
-        assertEq(lensOf().getGlobalDefensePool(), 0);
+        assertEq(lensOf().getGlobalDefensePool(), first);
 
         (GameTypes.Lobby memory beforeDraw, GameTypes.LobbyConfig memory beforeConfig,) = lensOf().getLobby(drawId);
-        assertEq(beforeDraw.rewardPool, first);
-        assertEq(beforeConfig.startPrizePool, first);
+        assertEq(beforeDraw.rewardPool, 0);
+        assertEq(beforeConfig.startPrizePool, 0);
 
         (bytes32 lobbyId, bytes32 attackId) = startedLobby();
         submitPoint(lobbyId, alice, 100_000_000, 100_000_000);
@@ -161,10 +163,21 @@ contract GlobalDefenseTest is AegylaxTest {
         uint256 second = running.rewardPool;
         completeAndReveal(lobbyId, attackId);
 
-        assertEq(lensOf().getGlobalDefensePool(), 0, "idle pool stays empty while the draw can still grow");
+        assertEq(lensOf().getGlobalDefensePool(), first + second);
         (GameTypes.Lobby memory afterDraw, GameTypes.LobbyConfig memory afterConfig,) = lensOf().getLobby(drawId);
-        assertEq(afterDraw.rewardPool, first + second);
-        assertEq(afterConfig.startPrizePool, first + second);
+        assertEq(afterDraw.rewardPool, 0);
+        assertEq(afterConfig.startPrizePool, 0);
+
+        _joinDraw(drawId, alice);
+        _joinDraw(drawId, bob);
+        _closeDraw(drawId);
+        game.startOperation(drawId);
+
+        (GameTypes.Lobby memory live, GameTypes.LobbyConfig memory liveConfig,) = lensOf().getLobby(drawId);
+        assertEq(uint8(live.status), uint8(GameTypes.LobbyStatus.ACTIVE));
+        assertEq(live.rewardPool, first + second);
+        assertEq(liveConfig.startPrizePool, first + second);
+        assertEq(lensOf().getGlobalDefensePool(), 0);
     }
 
     /**
@@ -319,5 +332,39 @@ contract GlobalDefenseTest is AegylaxTest {
         vm.prank(bob);
         vm.expectRevert(AegylaxGame.AlreadyClaimed.selector);
         game.settleCreator(drawId);
+    }
+
+    /**
+     * An under-filled draw must not take the jackpot with it.
+     *
+     * The wei never left `globalDefensePool`, so the trophy still reads the
+     * pile while the leftover room sits OPEN. Ordinary play still closes
+     * that room; it does not have to "return" money that was never moved.
+     */
+    function test_draw_underfilled_ordinaryPlayReturnsTheBountyToThePool() public {
+        uint256 pooled = _forfeitOnePool();
+        (bytes32 drawId,) = openDrawWhenDue();
+        _joinDraw(drawId, alice);
+        _closeDraw(drawId);
+
+        assertEq(lensOf().getGlobalDefensePool(), pooled);
+        (GameTypes.Lobby memory stuck,,) = lensOf().getLobby(drawId);
+        assertEq(uint8(stuck.status), uint8(GameTypes.LobbyStatus.OPEN));
+        assertEq(stuck.participantCount, 1);
+        assertEq(stuck.rewardPool, 0);
+
+        (,,, bytes32 reported) = lensOf().getGlobalDefenseDraw();
+        assertEq(reported, drawId);
+
+        createLobby();
+
+        (GameTypes.Lobby memory ended,,) = lensOf().getLobby(drawId);
+        assertEq(uint8(ended.status), uint8(GameTypes.LobbyStatus.CANCELLED));
+        assertEq(uint8(ended.ending), uint8(GameTypes.Ending.UNPLAYED));
+        assertTrue(ended.creatorSettled);
+        assertEq(lensOf().getGlobalDefensePool(), pooled);
+
+        (,,, bytes32 afterId) = lensOf().getGlobalDefenseDraw();
+        assertEq(afterId, bytes32(0), "next interval has not opened yet");
     }
 }

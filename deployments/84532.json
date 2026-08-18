@@ -2,10 +2,10 @@
   "name": "aegylax",
   "network": "base-sepolia",
   "chainId": 84532,
-  "version": "1.5.0",
+  "version": "1.7.0",
   "proxy": "0x3530c6f6d5d01be2bfe2f0b364a2260d19621dee",
-  "implementation": "0x8032b3b1d98d248e2de9265dd65d06f6e6e2ce7c",
-  "lens": "0x2f492b14e7c4f81be0d97e3131452ecacab3614a",
+  "implementation": "0xac9b70b2fff932ae68f79e61aaeff514b046fc23",
+  "lens": "0xc0ee4b0e169f21694a42abb926cf966c173986fc",
   "confidentialEngine": {
     "kind": "inco-lightning",
     "address": "0x02edc46ff4bd37effe7dafc77c28861c7f6c6521",
@@ -14,11 +14,11 @@
     "executor": "0xB3C06f0Ed967a7E366ba31C67927DDf93d7c1154"
   },
   "libraries": {
-    "Geometry": "0x1f58e6b2867c2bfdae03b8e06d35ed6dc1990843",
-    "Lobbies": "0x22106a5182009803b2f911d2cd9f03d28d249299",
-    "ProtocolRules": "0x7f820a6943bb5b5aef14e91ee0c881367286412e",
-    "Resolution": "0x4d76b7e572883cbb3f8a2025499729fd25cab67e",
-    "Settlement": "0x89a51b0801eeb9358277b453c9bf727edc596f26"
+    "Geometry": "0x4f7adefb64f1798565fa32dce143b51748066869",
+    "Lobbies": "0xf60b5d86b6215e6d1eb0adecd0f2dd8e415b12ce",
+    "ProtocolRules": "0xd1e3ff010a2ea2937e3e6d17d02ca712ccac2fe3",
+    "Resolution": "0xf825fee579f0a3333285f505e2db1e7a2e739a02",
+    "Settlement": "0x7c5b8b7bbf7ed9f2672ef6c0157185edad695931"
   },
   "owner": "0x68517bAd2fAf39F266A6F048d5899720c7ae61D8",
   "deploymentBlock": 45393997,
@@ -139,7 +139,15 @@
       "at": "2026-08-17T09:50:00.257Z",
       "kind": "upgrade",
       "tx": "0xf81fe26dbace2ce240b242b2bd2d3953a2451bbfd2b3bd4a03e774a0489d509a"
+    },
+    {
+      "version": "1.7.0",
+      "implementation": "0xac9b70b2fff932ae68f79e61aaeff514b046fc23",
+      "block": 45635564,
+      "at": "2026-08-18T07:50:22.419Z",
+      "kind": "upgrade",
+      "tx": "0x3946248ed5329beccd66787bbd4bce63fefbbdd2d11de79a0ebdb5d54243449c"
     }
   ],
-  "upgradedAt": "2026-08-17T09:50:00.257Z"
+  "upgradedAt": "2026-08-18T07:50:22.419Z"
 }

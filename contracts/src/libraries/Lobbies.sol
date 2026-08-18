@@ -6,6 +6,7 @@ import {IAegylaxEvents} from "../interfaces/IAegylaxEvents.sol";
 import {Epochs} from "./Epochs.sol";
 import {GameTypes} from "./GameTypes.sol";
 import {Geometry} from "./Geometry.sol";
+import {Settlement} from "./Settlement.sol";
 
 /**
  * Where an operation comes into existence, and where the protocol's own
@@ -41,6 +42,8 @@ library Lobbies {
     error RegistrationClosed();
     error NotParticipant();
     error TransferFailed();
+    error RegistrationStillOpen();
+    error MinPlayersNotReached();
 
     /**
      * An operation, written into storage and bound to its epoch's threat.
@@ -257,32 +260,28 @@ library Lobbies {
         uint256 remaining = uint256(deadlineBlock) - block.number;
         uint64 registrationDeadline = uint64(block.timestamp + remaining * 2);
 
-        $.globalDefensePool = 0;
-
+        /*
+         * The wei stay in `globalDefensePool` until the round actually
+         * starts. Mint used to drain the pile into this lobby, so a room
+         * that never filled left the trophy at 0 until somebody sent
+         * `cancelLobby`. An under-filled draw is now just a room: the
+         * jackpot never left. `activate` is what escrows the pile — the
+         * same moment fees stop being refundable on a player operation.
+         */
         lobbyId = mintLobby(
             $,
             p,
             GameTypes.LobbyConfig({
                 name: "Global Defense",
                 minPlayers: p.minPlayers,
-                // The protocol ceiling, not a smaller jackpot-only cap. A
-                // draw opened under an older params version keeps that
-                // version's number — the lobby snapshot does not follow
-                // later `setParams`.
                 maxPlayers: p.maxPlayers,
-                // Free to enter. The pool is already the players' own money,
-                // forfeited from rounds they lost; charging them to play for it
-                // back would be selling them their own stake a second time.
                 entryPrice: 0,
                 registrationDeadline: registrationDeadline,
                 registrationDeadlineBlock: deadlineBlock,
-                startPrizePool: uint128(pool),
-                // Nobody owns this operation, so nobody takes a cut of it.
+                startPrizePool: 0,
                 creatorFeeBps: 0
             }),
             address(this),
-            // The protocol charging itself a fee it also collects would be
-            // moving money between its own pockets and calling it revenue.
             0
         );
 
@@ -298,23 +297,131 @@ library Lobbies {
      * write still exists, but a game that only moves when somebody remembers
      * to click a trophy in the header is not autonomous. Any ordinary write
      * that already happens — creating, joining, scoring — is enough to mint
-     * the lobby once the join window has started, and enough to grow its
-     * bounty when a later miss would otherwise wait for the next interval.
+     * the lobby once the join window has started, enough to grow its bounty
+     * when a later miss would otherwise wait for the next interval, and
+     * enough to unwind an under-filled previous draw so the bounty is not
+     * stranded in a room nobody is looking at (`unfilledPastDraw`).
      */
     function maybeOpenDraw(AegylaxStorage.GameStorage storage $) public {
+        maybeCloseDraw($);
         topUpDraw($);
         if (!_drawDue($)) return;
         openDraw($);
     }
 
     /**
+     * A protocol-owned draw whose join window has closed without a full room.
+     *
+     * The jackpot never left `globalDefensePool` on mint, so an under-filled
+     * leftover cannot hide it. Closing still refunds anyone who sat down and
+     * clears the room — the same permissionless path as opening, not a keeper.
+     *
+     * Zero if there is nothing to close: cadence off, no past draw, still
+     * in the window, already past OPEN, or the room filled.
+     */
+    function unfilledPastDraw(AegylaxStorage.GameStorage storage $) public view returns (bytes32 lobbyId) {
+        uint32 interval = $.globalDefenseEpochInterval;
+        if (interval == 0) return bytes32(0);
+
+        GameTypes.GameParams memory p = $.params;
+        uint32 current = Epochs.epochOf(uint64(block.number), p.epochBlocks, $.genesisBlock);
+        uint32 epochId = (current / interval) * interval;
+        if (epochId == 0) return bytes32(0);
+
+        lobbyId = $.globalDefenseLobby[epochId];
+        if (lobbyId == bytes32(0)) return bytes32(0);
+
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        if (lobby.status != GameTypes.LobbyStatus.OPEN) return bytes32(0);
+
+        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
+        if (block.number < config.registrationDeadlineBlock) return bytes32(0);
+        if (lobby.participantCount >= config.minPlayers) return bytes32(0);
+    }
+
+    function maybeCloseDraw(AegylaxStorage.GameStorage storage $) public {
+        bytes32 drawId = unfilledPastDraw($);
+        if (drawId == bytes32(0)) return;
+        closeUnfilled($, drawId);
+    }
+
+    /**
+     * ТЗ §18 — UNPLAYED rather than CANCELLED. Nothing went wrong with the
+     * protocol: the room simply never filled, so no round was ever started
+     * and everybody takes their money back.
+     */
+    function closeUnfilled(AegylaxStorage.GameStorage storage $, bytes32 lobbyId) public {
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        lobby.status = GameTypes.LobbyStatus.CANCELLED;
+        lobby.ending = GameTypes.Ending.UNPLAYED;
+        if ($.activeLobbies > 0) $.activeLobbies -= 1;
+        Settlement.payoutUnplayed($, lobbyId);
+        emit IAegylaxEvents.LobbyCancelled(lobbyId, "minimum defenders not reached");
+    }
+
+    /**
+     * OPEN -> ACTIVE, once, whenever somebody first needs it to have
+     * happened. Lives here so the implementation stays under EIP-170:
+     * `commitDrawBounty` is the jackpot move, and inlining it in the game
+     * pushed the runtime 41 bytes past 24,576.
+     *
+     * Idempotent by status: an operation already past OPEN returns
+     * untouched, which is what makes it safe to call from everywhere.
+     */
+    function activate(AegylaxStorage.GameStorage storage $, bytes32 lobbyId) public {
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        if (lobby.status != GameTypes.LobbyStatus.OPEN) return;
+
+        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
+        if (block.number < config.registrationDeadlineBlock) revert RegistrationStillOpen();
+        if (lobby.participantCount < config.minPlayers) revert MinPlayersNotReached();
+
+        // Protocol draw: the jackpot sat in the idle pool until this
+        // moment. A room that never reached here never took it.
+        commitDrawBounty($, lobbyId);
+
+        lobby.rewardPool += lobby.entryFeesCollected;
+
+        lobby.status = GameTypes.LobbyStatus.ACTIVE;
+        lobby.startedAtBlock = uint64(block.number);
+
+        emit IAegylaxEvents.OperationStarted(lobbyId, lobby.epochId, uint64(block.number));
+    }
+
+    /**
+     * Escrow the idle jackpot into a protocol draw that is actually starting.
+     *
+     * Called from `activate`, not from mint: until enough defenders sit
+     * down the pile is still `globalDefensePool`, so an under-filled room
+     * cannot hide it. Once this runs the bounty is frozen in the lobby the
+     * same way a player operation's start prize is.
+     */
+    function commitDrawBounty(AegylaxStorage.GameStorage storage $, bytes32 lobbyId) public {
+        GameTypes.Lobby storage lobby = $.lobbies[lobbyId];
+        if (lobby.creator != address(this)) return;
+
+        uint256 pooled = $.globalDefensePool;
+        if (pooled == 0) return;
+
+        GameTypes.LobbyConfig storage config = $.lobbyConfigs[lobbyId];
+        uint256 nextReward = uint256(lobby.rewardPool) + pooled;
+        uint256 nextStart = uint256(config.startPrizePool) + pooled;
+        if (nextReward > type(uint128).max || nextStart > type(uint128).max) revert DrawBountyOverflow();
+
+        $.globalDefensePool = 0;
+        lobby.rewardPool = uint128(nextReward);
+        config.startPrizePool = uint128(nextStart);
+        emit IAegylaxEvents.DefensePoolFunded(lobbyId, pooled, 0);
+    }
+
+    /**
      * If the next draw is already minted and the threat has not launched,
      * move the idle pool into that lobby's bounty.
      *
-     * Opening used to freeze the figure at mint, so a miss during the join
-     * window sat in `globalDefensePool` for the *following* interval while
-     * the trophy still showed the mint-time number. The money is the same
-     * money; the players looking at this room should be playing for it.
+     * Only for a draw that has already taken the pile (`commitDrawBounty`).
+     * An OPEN protocol room still leaves later misses in `globalDefensePool`
+     * — that is the pile the trophy reads, and moving it early is how an
+     * under-filled room used to read 0.
      */
     function topUpDraw(AegylaxStorage.GameStorage storage $) public {
         uint256 extra = $.globalDefensePool;
@@ -322,6 +429,9 @@ library Lobbies {
 
         bytes32 drawId = _unlaunchedDraw($);
         if (drawId == bytes32(0)) return;
+        if ($.lobbies[drawId].creator == address(this) && $.lobbies[drawId].status == GameTypes.LobbyStatus.OPEN) {
+            return;
+        }
 
         $.globalDefensePool = 0;
         _addToDrawBounty($, drawId, extra);

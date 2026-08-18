@@ -427,11 +427,12 @@ with `claimReward`. A frontend that decides someone won changes nothing.
 ### Global Defense
 
 See [protocol-flow.md](protocol-flow.md) §4. The header trophy
-reads the live pool (or the open draw's bounty). Misses during the join
-window grow that bounty until the threat launches. Join is offered only
-inside the 24-hour window before the interval epoch. The UI never calls
-`openGlobalDefense`. The room size is the protocol `maxPlayers` at mint
-(9999 on live Sepolia), frozen on that lobby — not a hardcoded 20.
+reads the idle pool plus any bounty already escrowed in a live or leftover
+draw, and hides when both are empty. Misses during the join window grow
+that pile until the round starts. Join is offered only inside the 24-hour
+window before the interval epoch. The UI never calls `openGlobalDefense`.
+The room size is the protocol `maxPlayers` at mint (9999 on live Sepolia),
+frozen on that lobby — not a hardcoded 20.
 
 ## Map / sectors
 

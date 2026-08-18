@@ -292,6 +292,24 @@ contract AegylaxLens is AegylaxStorage {
         // the one in progress can no longer have an operation opened for it.
         nextEpoch = (epoch / interval + 1) * interval;
         lobbyId = $.globalDefenseLobby[nextEpoch];
+        if (lobbyId != bytes32(0)) return (nextEpoch, interval, pool, lobbyId);
+
+        // A previous draw may still be OPEN without holding the bounty
+        // (mint no longer drains the pile). After that draw's epoch the
+        // lookup above names the *next* interval. Surface the leftover so
+        // a keeper can close it; the trophy reads `pool` either way.
+        uint32 previous = (epoch / interval) * interval;
+        if (previous == 0) return (nextEpoch, interval, pool, bytes32(0));
+        bytes32 prevId = $.globalDefenseLobby[previous];
+        if (prevId == bytes32(0)) return (nextEpoch, interval, pool, bytes32(0));
+        GameTypes.Lobby storage prev = $.lobbies[prevId];
+        if (
+            prev.status == GameTypes.LobbyStatus.OPEN ||
+            prev.status == GameTypes.LobbyStatus.READY ||
+            prev.status == GameTypes.LobbyStatus.ACTIVE
+        ) {
+            lobbyId = prevId;
+        }
     }
 
     function getProbeFlight(bytes32 hintHandle) external view returns (GameTypes.ProbeFlight memory) {

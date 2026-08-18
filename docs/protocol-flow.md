@@ -61,7 +61,7 @@ the proxy's deploy block.
 | `totalAttacks` | `_ensureEpochAttack` | Attacks **minted** — an epoch only draws one if somebody creates an operation into it. |
 | `interceptedAttacks` | first team on an epoch to intercept | Counts *attacks*, not teams: two teams both intercepting the same threat move it once. |
 | `protocolTreasury` | `+` on activation, `-` on a refunding ending | The owner's withdrawable revenue, and the only thing they may ever take. |
-| `globalDefensePool` | `+` when a COMPLETED round has no winner; `-` when a draw is opened | Players' money in escrow. **Never withdrawable by the owner.** |
+| `globalDefensePool` | `+` when a COMPLETED round has no winner; `-` when a protocol draw actually starts | Players' money in escrow. **Never withdrawable by the owner.** An OPEN draw does not take it. |
 
 **`totalAttacks` is not "attacks flown".** `_attackTally` derives *flown* from
 the clock instead — one attack per epoch since genesis, whether anybody was
@@ -80,7 +80,7 @@ remainder (`flown − intercepted`), never a stored counter. A stored one drifte
 | `probeFeesCollected` | `buyProbes` | Stays inside the operation, inside `rewardPool`. |
 | `creatorFeeAccrued` | joins, minus leaves | Author commission collected at join. Paid to the creator on COMPLETED. |
 | `protocolFeeAccrued` | the creation fee at mint | Already in `protocolTreasury` from create; never released. |
-| `rewardPool` | bounty at mint, `+` probes, `+` full entries at activation, zeroed if forfeited | What winners share. |
+| `rewardPool` | player bounty at mint, protocol bounty at `commitDrawBounty`, `+` probes, `+` full entries at activation, zeroed if forfeited | What winners share. |
 | `rewardsClaimed` | `claimReward` | So the creator's dust settlement is exact. |
 
 ### Per participant
@@ -383,7 +383,7 @@ Every COMPLETED round the threat won sends its pool here. Every
 default 1000) the protocol opens a free-to-enter operation of its own.
 
 Opening is a side effect of ordinary play (`Lobbies.maybeOpenDraw` from
-`createLobby`, `joinLobby`, `_resolveLobby`), and only inside the join
+create, join, probes, defense, resolve, reveal), and only inside the join
 window — 24 hours of 2-second blocks, or half the interval if that is
 shorter. Permissionless `openGlobalDefense` still exists for tests; the UI
 never sends it.
@@ -394,11 +394,13 @@ It mints an operation owned by the contract:
   on Sepolia). There is no smaller jackpot-only cap. The number is frozen on
   the lobby at mint, so a draw opened under an older params version keeps that
   version's ceiling,
-- bounty = the **whole** accumulated pool at mint (drained to zero as it
-  moves, so the pool and the operation never both hold the same wei),
-  plus any later misses that land while the draw has not launched
-  (`Lobbies.topUpDraw`). Once the threat is in flight the bounty is
-  frozen; later misses wait in the idle pool for the next interval,
+- the wei stay in `globalDefensePool` until the round actually starts
+  (`Lobbies.commitDrawBounty` from `activate`). Mint used to drain the pile
+  into the lobby, so an under-filled room hid the jackpot until somebody
+  cancelled it. An OPEN protocol room is just a room: later misses land on
+  the same pile the trophy already reads. Once enough defenders start the
+  round the bounty moves in and freezes; misses after that wait in the idle
+  pool for the next interval,
 - **entry price 0** — it is already the players' own money, forfeited from
   rounds they lost; charging them to play for it back would be selling them
   their own stake twice,
@@ -410,8 +412,9 @@ It mints an operation owned by the contract:
 - A draw nobody wins is a COMPLETED round with no winner, so `resolveLobby`
   returns its pool to the Global Defense Pool by the same line that filled it,
   and it waits for the next interval.
-- A draw nobody joins is UNPLAYED, and `cancelLobby` returns the bounty to the
-  pool in the same transaction because the contract is its creator.
+- A draw nobody joins is UNPLAYED. The bounty never left the idle pool, so
+  cancel does not have to "return" it; ordinary play still closes the leftover
+  room (`maybeCloseDraw`) so it does not sit OPEN forever.
 
 The pool is **not** `protocolTreasury` and no owner call can reach it. The
 treasury is revenue; this is players' money the protocol has promised back to
@@ -513,7 +516,7 @@ second `setInterval` sampling `Date.now()` at an unrelated moment.
 ## 9. Deployment note
 
 These rules **are live** on Base Sepolia (proxy in `deployments/84532.json`,
-game `1.4.0`, params version 4). Changing limits is `npm run chain:params`
+game `1.7.0`, params version 4). Changing limits is `npm run chain:params`
 (no redeploy). Changing bytecode is `npm run chain:upgrade`. The draw
 interval is `setGlobalDefenseInterval`, not a `GameParams` field.
 
