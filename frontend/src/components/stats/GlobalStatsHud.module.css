@@ -1,0 +1,625 @@
+/*
+ * One instrumentation block, not a row of cards: no per-metric panels,
+ * backgrounds or borders, and no vertical rules between metrics — the
+ * grouping comes from spacing alone (spec §1).
+ */
+/*
+ * `flex-wrap: nowrap`: at typical header widths the old kicker text plus
+ * "EPOCH"/"Impact in" labels pushed the Impact Timer past the available
+ * width, so it wrapped onto its own row below the metrics. All three
+ * labels are gone now, which frees enough width to keep everything on one
+ * line — nowrap makes that the guarantee rather than a coincidence.
+ */
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-2) 0;
+  min-width: 0;
+}
+
+.metrics {
+  display: inline-flex;
+  align-items: center;
+  /* Stays one atomic row — if it wrapped independently of `.hud`, a metric
+     could split onto its own line while the timer stayed put beside it,
+     which is the same "stray second line" problem `.hud`'s nowrap fixes. */
+  flex-wrap: nowrap;
+  gap: var(--space-3) clamp(14px, 2.4vw, 34px);
+}
+
+.metric {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.metric:focus-visible {
+  outline: 1px solid var(--color-border-strong);
+  outline-offset: 4px;
+}
+
+/*
+ * Defenses is the one metric that is also a door. The rest of the row
+ * reports; this one navigates. A hairline under the glyph was not enough
+ * to read as a control at rest, so it borrows the wallet pill: glass
+ * chip and pointer. Same family as Connect, smaller, sitting in the
+ * instrument it already belongs to.
+ *
+ * No chevron. It carried a "goes somewhere" that the chip's own shape
+ * already carries — a pill with a border and a background, in a row where
+ * nothing else has one — and at this size a 7px arrow beside a 22px glyph
+ * and a number was a third object competing for a space that has room for
+ * two.
+ */
+.metricLink {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  height: 34px;
+  padding: 0 9px 0 7px;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-cool) 30%, transparent);
+  background: color-mix(in srgb, var(--color-bg-panel-alt) 90%, transparent);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.metricLink:hover,
+.metricLink:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--color-bg-panel-alt) 98%, transparent);
+}
+
+.metricLink:active {
+  transform: translateY(1px);
+}
+
+.metricOn {
+  border-color: color-mix(in srgb, var(--color-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-panel-alt));
+}
+
+.metricLink .icon {
+  width: 22px;
+  height: 22px;
+  opacity: 1;
+}
+
+.metricLink:hover .icon,
+.metricLink:focus-visible .icon,
+.metricOn .icon {
+  color: var(--color-text);
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+  opacity: 0.85;
+}
+
+.metric:hover .icon,
+.metric:focus-visible .icon {
+  opacity: 1;
+}
+
+/*
+ * Numbers share one type system but not one weight: the lifetime counters
+ * step down from attacks, the two outcomes carry their result color, and
+ * the epoch is set in mono because it is a chain position, not a tally
+ * (spec §11).
+ */
+.value {
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: color 0.4s ease;
+}
+
+.valuePrefix {
+  opacity: 0.55;
+  margin-right: 1px;
+}
+
+/*
+ * The number half of the reaction. It runs on exactly the same trigger as
+ * `.alerting` on the icon — this metric's own figure changed — so the two
+ * are always seen together and neither can fire on its own.
+ *
+ * `--accent-glow` is only the fallback: a metric that declares its own
+ * `--alert-glow` (the rows below) keeps it, and one that does not glows in
+ * whatever the active theme's accent is rather than in a colour frozen here.
+ */
+.value.flash {
+  --accent-glow: color-mix(in srgb, var(--color-accent) 80%, transparent);
+  color: var(--color-accent);
+  transition: color 0s;
+  animation: value-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  filter: drop-shadow(0 0 3px var(--alert-glow, var(--accent-glow)))
+    drop-shadow(0 0 8px var(--alert-glow, var(--accent-glow)));
+}
+
+@keyframes value-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-1.5px, 1.5px);
+  }
+  35% {
+    transform: translate(2px, -2px);
+  }
+  55% {
+    transform: translate(-1.5px, 1.5px);
+  }
+  75% {
+    transform: translate(1px, -1px);
+  }
+}
+
+/*
+ * ТЗ §7 — a counter moving, on the icon it belongs to.
+ *
+ * A short diagonal shake plus a neon glow in the metric's own colour:
+ * diagonal because it has to be distinguishable at a glance from the
+ * ordinary horizontal jitter of a number changing, and in the metric's
+ * colour because the row's whole job is to say *which* of the outcomes just
+ * happened. `--alert-glow` is set per tone below.
+ *
+ * `transform` and `filter` only, so the whole thing composites — this runs
+ * in the header, above a page that may be drawing a starfield and a
+ * rotating globe underneath it.
+ */
+.alerting {
+  animation: metric-shake 620ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  filter: drop-shadow(0 0 6px var(--alert-glow)) drop-shadow(0 0 14px var(--alert-glow));
+  opacity: 1;
+}
+
+@keyframes metric-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  12% {
+    transform: translate(-2.5px, 2.5px);
+  }
+  28% {
+    transform: translate(3px, -3px);
+  }
+  44% {
+    transform: translate(-2.5px, 2.5px);
+  }
+  60% {
+    transform: translate(2px, -2px);
+  }
+  78% {
+    transform: translate(-1px, 1px);
+  }
+}
+
+/* -- The glitch burst ------------------------------------------------------ */
+
+/*
+ * ТЗ §7 — the Defenses chip coming apart, and coming back, once every ten to
+ * fourteen seconds. `useGlitchBurst` sets `data-glitch` for the run and hands
+ * this block the distances and angles it uses, re-rolled per burst.
+ *
+ * It is a *sequence*, not a shake, and that is the thing to preserve. The
+ * version before this one threw the two children to five random offsets each
+ * and called it chaos; what it actually read as was a stutter, because
+ * nothing about it went anywhere — no beat followed from the one before, so
+ * there was nothing to watch. This one has four acts and they are always in
+ * the same order, while the *amounts* are different every time:
+ *
+ *   break     0-14%   the glyph fractures where it stands, in hard steps
+ *   scatter  14-42%   the five pieces and the count are flung outward and
+ *                     shrink as they go, so they read as receding
+ *   orbit    42-70%   everything turns about the chip's centre, twice
+ *   gather   70-100%  drawn back in, overshooting slightly, and settled
+ *
+ * The turn is what makes it legible. Five pieces travelling in five straight
+ * lines is debris; five pieces going round the same centre is one object that
+ * came apart, which is why the burst now reads as an event with a beginning
+ * and an end rather than as noise.
+ *
+ * `steps()` only in the first act. The hard cuts are the character of a
+ * display losing sync and they are right for the fracture, and wrong for
+ * everything after it: an orbit rendered in steps is not an orbit, it is four
+ * positions. Per-keyframe `animation-timing-function` is what lets one
+ * animation be digital at the start and smooth once it is moving.
+ *
+ * Nothing here is in the layout. Every rule is a transform on a child that
+ * returns to identity, so the header row is the same width mid-burst as it is
+ * at rest — this sits between the jackpot and the wallet, and a chip that
+ * resized every ten seconds would walk the whole bar. The chip's own border
+ * is not in this block at all: it does not move, stretch or flicker, and the
+ * whole effect is the difference between a frame that holds still and
+ * contents that do not.
+ *
+ * The contents leave that frame in every direction. The pill has no
+ * `overflow` of its own and nothing above it clips — and the `<svg>` is given
+ * `overflow: visible` for the run, because a UA stylesheet clips one to its
+ * own viewBox by default and the pieces would otherwise be cut off two
+ * millimetres out, inside the glyph's own box.
+ *
+ * The 1250ms below is `BURST_MS` in `useGlitchBurst`. The hook ends the run
+ * and stops the noise on its own clock, so the two have to agree; they are in
+ * different languages, so neither can read the other's copy.
+ */
+
+/*
+ * Above its neighbours for the length of the run, and only then.
+ *
+ * The row is five metrics with 14-34px between them, so contents thrown
+ * 30-46px sideways travel over the ones either side. Painting under them
+ * would cut the escaping digits in half against a neighbour's glyph, which
+ * looks like a z-order bug rather than like chaos.
+ */
+[data-glitch='true'] {
+  z-index: 3;
+}
+
+/*
+ * The glyph as a whole: it does not move, it *turns* — two full revolutions
+ * about its own centre across the run, carrying whatever its pieces are
+ * doing inside it. Splitting the motion this way is what keeps five separate
+ * paths reading as one object: the orbit is stated once, here, and each
+ * piece only has to say how far out it flew.
+ */
+[data-glitch='true'] .icon {
+  overflow: visible;
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: glitch-orbit 1250ms both;
+}
+
+/*
+ * And the pieces themselves, flung straight out from that centre and pulled
+ * back. `--phase` is the direction each one takes, and the pattern below
+ * sends every piece roughly the way it already points — the top-left bracket
+ * leaves to the top left — so the glyph looks like it burst apart rather
+ * than like five shapes that were assigned vectors.
+ *
+ * `rotate(phase) translateX(r) rotate(-phase)` is a straight line along
+ * `phase`: the second rotation undoes the first for the piece's own
+ * orientation, so it travels outward without spinning on itself. The spin
+ * belongs to the parent, once, for all five.
+ */
+[data-glitch='true'] .icon > * {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: glitch-scatter 1250ms both;
+}
+
+/* The shield goes straight up and out; the four brackets follow their own
+   corners. Positional, and `StatusIcons` says so where the paths are. */
+[data-glitch='true'] .icon > *:nth-child(1) {
+  --phase: -90deg;
+  --reach: 1.15;
+}
+[data-glitch='true'] .icon > *:nth-child(2) {
+  --phase: -142deg;
+}
+[data-glitch='true'] .icon > *:nth-child(3) {
+  --phase: -38deg;
+}
+[data-glitch='true'] .icon > *:nth-child(4) {
+  --phase: 38deg;
+}
+[data-glitch='true'] .icon > *:nth-child(5) {
+  --phase: 142deg;
+}
+
+/*
+ * The count takes the same four acts on its own centre — out, round twice,
+ * back — a beat behind the glyph, so the two do not change position on the
+ * same frame. Two things moving in lockstep read as one thing juddering.
+ */
+[data-glitch='true'] .value {
+  animation: glitch-fling 1250ms both;
+}
+
+/* Act 1 is four hard cuts; everything after it is continuous. */
+@keyframes glitch-orbit {
+  0% {
+    transform: rotate(0turn);
+    animation-timing-function: steps(4, end);
+  }
+  14% {
+    transform: rotate(0.03turn);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  42% {
+    transform: rotate(0.85turn);
+    animation-timing-function: linear;
+  }
+  70% {
+    transform: rotate(1.6turn);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.4, 1);
+  }
+  100% {
+    transform: rotate(2turn);
+  }
+}
+
+@keyframes glitch-scatter {
+  0% {
+    transform: translate(0, 0) scale(1);
+    animation-timing-function: steps(4, end);
+  }
+  /* The fracture: barely apart, but already not one shape. */
+  14% {
+    transform: rotate(var(--phase, 0deg)) translateX(calc(var(--glitch-piece, 20px) * 0.14))
+      rotate(calc(var(--phase, 0deg) * -1)) scale(1.08);
+    animation-timing-function: cubic-bezier(0.16, 0.9, 0.3, 1);
+  }
+  /* Thrown clear, and smaller — receding rather than merely displaced. */
+  42% {
+    transform: rotate(var(--phase, 0deg))
+      translateX(calc(var(--glitch-piece, 20px) * var(--reach, 1))) rotate(calc(var(--phase, 0deg) * -1))
+      scale(0.66);
+    animation-timing-function: linear;
+  }
+  /* Held out while the parent turns. */
+  70% {
+    transform: rotate(var(--phase, 0deg))
+      translateX(calc(var(--glitch-piece, 20px) * var(--reach, 1) * 0.92))
+      rotate(calc(var(--phase, 0deg) * -1)) scale(0.7);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1);
+  }
+  /* Past its own place on the way home, so the glyph snaps together. */
+  91% {
+    transform: rotate(var(--phase, 0deg)) translateX(calc(var(--glitch-piece, 20px) * -0.1))
+      rotate(calc(var(--phase, 0deg) * -1)) scale(1.05);
+    animation-timing-function: cubic-bezier(0.3, 0.8, 0.4, 1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes glitch-fling {
+  0% {
+    transform: translate(0, 0) rotate(0turn) scale(1) skewX(0);
+    animation-timing-function: steps(4, end);
+  }
+  16% {
+    transform: translate(var(--glitch-x, 8px), calc(var(--glitch-y, 12px) * -0.2)) rotate(0.02turn)
+      scale(1.06) skewX(var(--glitch-skew, 12deg));
+    animation-timing-function: cubic-bezier(0.16, 0.9, 0.3, 1);
+  }
+  44% {
+    transform: translate(var(--glitch-swap, 36px), var(--glitch-y, 12px)) rotate(0.8turn) scale(0.62)
+      skewX(calc(var(--glitch-skew, 12deg) * -0.6));
+    animation-timing-function: linear;
+  }
+  72% {
+    transform: translate(calc(var(--glitch-swap, 36px) * -0.55), calc(var(--glitch-y, 12px) * -1.15))
+      rotate(1.62turn) scale(0.68) skewX(0);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1);
+  }
+  92% {
+    transform: translate(calc(var(--glitch-x, 8px) * -0.4), calc(var(--glitch-y, 12px) * 0.12))
+      rotate(2turn) scale(1.06) skewX(0);
+    animation-timing-function: cubic-bezier(0.3, 0.8, 0.4, 1);
+  }
+  100% {
+    transform: translate(0, 0) rotate(2turn) scale(1) skewX(0);
+  }
+}
+
+/* -- Tones ---------------------------------------------------------------- */
+
+/*
+ * The three epoch outcomes each carry their own glow: neutral for the
+ * attack itself, the success colour for an interception, the danger colour
+ * for a hit.
+ *
+ * All six tones below are mixes of four tokens rather than the hand-picked
+ * blue-greys they used to be. That is the point of the block: these
+ * readouts sit in one row and have to look like one instrument (ТЗ §9), and
+ * the only way that survives a palette change is for every tone in it to be
+ * derived from the palette instead of matched to it by eye.
+ */
+.attacks {
+  --alert-glow: color-mix(in srgb, var(--color-text) 80%, transparent);
+}
+
+.intercepted {
+  --alert-glow: color-mix(in srgb, var(--color-success) 80%, transparent);
+}
+
+.impacts {
+  --alert-glow: color-mix(in srgb, var(--color-danger) 80%, transparent);
+}
+
+.attacks .icon {
+  color: var(--color-text-label);
+}
+
+.attacks .value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.defenses {
+  --alert-glow: color-mix(in srgb, var(--color-text-dim) 80%, transparent);
+}
+
+.defenses .icon {
+  color: var(--color-text-dim);
+}
+
+.defenses .value {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-text-label);
+}
+
+.intercepted .icon {
+  color: color-mix(in srgb, var(--color-success) 76%, var(--color-text-dim));
+}
+
+.intercepted .value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-success) 70%, var(--color-text));
+}
+
+.impacts .icon {
+  color: color-mix(in srgb, var(--color-danger) 70%, var(--color-text-dim));
+}
+
+.impacts .value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-danger) 64%, var(--color-text));
+}
+
+/* The epoch is the protocol's current position, not a lifetime counter, so
+   it sits on the far side of a wider gap and is labelled inline (spec §7). */
+.epoch {
+  margin-left: var(--space-3);
+  gap: 6px;
+  --alert-glow: color-mix(in srgb, var(--color-accent-cool) 80%, transparent);
+}
+
+.epoch .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-dim);
+}
+
+.epoch .value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--color-accent-cool) 34%, var(--color-text));
+}
+
+/* -- Tooltip -------------------------------------------------------------- */
+
+.tooltip {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: max-content;
+  max-width: 220px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-strong);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  z-index: 20;
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--color-border-strong);
+}
+
+.tooltipLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.tooltipDescription {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.metric:hover .tooltip,
+.metric:focus-visible .tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 900px) {
+  .icon {
+    width: 24px;
+    height: 24px;
+  }
+  .metricLink {
+    height: 30px;
+    padding: 0 8px 0 6px;
+  }
+  .metricLink .icon {
+    width: 20px;
+    height: 20px;
+  }
+  .epoch .icon {
+    width: 21px;
+    height: 21px;
+  }
+}
+
+@media (max-width: 560px) {
+  .hud {
+    gap: var(--space-2) var(--space-4);
+  }
+  .epoch {
+    margin-left: var(--space-1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    transition: none;
+  }
+
+  /* The glow still marks which metric moved — only the travel goes. */
+  .alerting,
+  .value.flash {
+    animation: none;
+  }
+
+  /*
+   * The burst is decoration with nothing to report, so it goes entirely.
+   * `useGlitchBurst` already refuses to schedule under this setting and so
+   * never sets the attribute — this is the belt to that hook's braces, for
+   * the case where the preference is switched on with a burst in flight.
+   */
+  [data-glitch='true'] .icon,
+  [data-glitch='true'] .icon > *,
+  [data-glitch='true'] .value {
+    animation: none;
+  }
+
+  .metricLink:active {
+    transform: none;
+  }
+}

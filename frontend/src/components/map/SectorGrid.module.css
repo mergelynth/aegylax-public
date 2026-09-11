@@ -1,0 +1,328 @@
+/*
+ * Fills the scene under the header. Sits below every other overlay block
+ * in the stack, so the Command Center and the axis labels keep their
+ * clicks — the grid only ever picks up the space between them.
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  /* Above the starfield, below Earth and every HUD block. Nothing of the
+     grid exists over the planet anyway — it is clipped out — so painting
+     under it costs nothing and keeps the globe untouched. */
+  z-index: 1;
+  /* Only cells, the point marker and the confirm marker take the pointer;
+     the empty scene between them still belongs to whatever is underneath. */
+  pointer-events: none;
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  pointer-events: none;
+}
+
+/*
+ * A cell is a hit target and a selection outline, nothing more. What used
+ * to be a per-sector recon colour is now the fog layer below, which is
+ * painted underneath these and blurred past the cell boundary — so the
+ * reading never quantises to the grid.
+ */
+.cell {
+  fill: transparent;
+  /* `fill` rather than the default: a fully transparent cell must still be
+     clickable across its whole area, and the clip path already removed the
+     part Earth covers. */
+  pointer-events: fill;
+  cursor: pointer;
+  outline: none;
+  stroke: none;
+}
+
+.cell:hover,
+.cell:focus,
+.cell:focus-visible,
+.selected {
+  outline: none;
+  stroke: none;
+  fill: transparent;
+}
+
+/*
+ * No operation under way: the grid is pure orientation. Dropping pointer
+ * events is what removes the hover tint and the pointer cursor together —
+ * a cell that lights up under the mouse but does nothing is worse than one
+ * that plainly is not a control.
+ */
+.inert .cell {
+  pointer-events: none;
+  cursor: default;
+}
+
+/*
+ * ТЗ §3 — reconnaissance, as a cloud with a route in it.
+ *
+ * The layer sits under the cells and takes no clicks: it is a reading over
+ * the board, not a surface on it, and the sectors underneath have to stay
+ * pickable through it. Everything in it is sized and blurred in the SVG
+ * from the fix's own uncertainty, so the stylesheet only owns the colours.
+ *
+ * And the colours are the grammar. Blue is reconnaissance — the probe's
+ * wave, the uncertainty it leaves, the whole of what a defender knows for
+ * certain. Red is the *estimate* drawn from it, and red is also what the
+ * revealed trajectory is drawn in later, which is the point: the trail is
+ * an attempt at the thing the reveal eventually shows, so it wears that
+ * thing's colour rather than pretending to be a different kind of fact.
+ */
+.recon {
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+/* The fog landing after the probe's flight — a brief settle, not a fade
+   that would hide the reading. */
+.reconArrive {
+  animation: recon-arrive 0.55s ease-out;
+}
+
+@keyframes recon-arrive {
+  from {
+    opacity: 0.12;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The fill of every layer below is a `url(#recon-*-fade)` gradient set in
+ * the SVG rather than a flat colour set here — the falloff with distance is
+ * geometry, and it has to be expressed in the same scene pixels the wedges
+ * are. What these rules own is the fallback colour, which is what a
+ * renderer that dropped the gradient would show.
+ */
+.cloud {
+  fill: var(--color-accent-cool);
+}
+
+/*
+ * Occupancy where one reading puts the inbound. The shade is a per-mark
+ * ramp across the seven grades, set in the component from the probe's
+ * own index — a stylesheet cannot interpolate a count it does not see.
+ */
+.threatBlotch {
+  pointer-events: none;
+}
+
+/*
+ * ТЗ §1.4 — the scan that delivered a reading.
+ *
+ * Rings drawn at Earth's own radius so they peel off the rim rather than
+ * expanding through it, and 3.4 carries the leading ring past the far
+ * corner of any scene the grid fits in. Once a cloud exists the same
+ * rings are arcs cut to it, which is why the origin is pinned to the
+ * planet in the component: an arc scaled about its own box walks off
+ * Earth instead of opening out of it.
+ *
+ * It runs once. A sweep that repeats until the answer lands is a
+ * progress bar drawn over the whole map, and the Send control already
+ * says the same thing without moving.
+ */
+.wave {
+  pointer-events: none;
+}
+
+.waveRing,
+.waveRingEcho {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  transform-box: view-box;
+  animation: recon-wave 1.5s cubic-bezier(0.16, 0.85, 0.3, 1) forwards;
+}
+
+.waveRingEcho {
+  stroke: var(--color-accent-cool);
+  stroke-width: 1.4;
+  animation-delay: 0.22s;
+}
+
+.waveFlash {
+  fill: var(--color-accent);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: recon-flash 0.7s cubic-bezier(0.16, 0.85, 0.3, 1) forwards;
+}
+
+@keyframes recon-wave {
+  0% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+
+@keyframes recon-flash {
+  0% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+/*
+ * Thin, cool and quiet — the grid gives orientation without competing with
+ * the scene behind it (ТЗ §2.9).
+ */
+.line,
+.earthEdge {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.axis {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.axisLabel {
+  position: absolute;
+  padding: 3px 5px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 35%, transparent);
+  text-shadow: 0 1px 4px #000000cc;
+  user-select: none;
+}
+
+/* Centred on the cell it names, along whichever edge its axis runs. */
+.axisTop {
+  transform: translateX(-50%);
+}
+
+.axisSide {
+  transform: translateY(-50%);
+}
+
+/* Only ever one or two on screen — the hovered cell and the picked one. */
+.cellLabel {
+  display: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+  pointer-events: none;
+  user-select: none;
+}
+
+/*
+ * ТЗ §10 — the interception radius, in green neon, at the exact size the
+ * protocol uses. This is the area the Defense Point actually covers, so it
+ * is drawn rather than described: a player sizing up a sector can see how
+ * much of it they hold.
+ *
+ * It sits under the point marker and takes no clicks — the press has to
+ * reach the cell underneath, and a 100px-wide ring swallowing it would
+ * break placing the point at all.
+ */
+/*
+ * Green, the same ink the console prints the DEFENSE readout in. The point
+ * and its radius are the player's own defence, and on this screen that is
+ * the only thing green means — there is no verdict to confuse it with yet.
+ *
+ * The reveal is a different screen and keeps a different rule: there green
+ * means *intercepted*, whoever drew the circle, and the viewer's own point
+ * is violet so "mine" and "it worked" stay two separate readings.
+ */
+.interceptionRing {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, color-mix(in srgb, var(--color-success) 72%, #e6fff4) 80%, transparent);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-success) 8%, transparent) 0 60%, color-mix(in srgb, var(--color-success) 18%, transparent) 100%);
+  box-shadow:
+    0 0 12px 1px color-mix(in srgb, var(--color-success) 40%, transparent),
+    inset 0 0 14px -2px color-mix(in srgb, var(--color-success) 50%, transparent);
+  pointer-events: none;
+}
+
+/* Locked in: brighter, and no longer inviting adjustment. */
+.interceptionRingLocked {
+  border-color: color-mix(in srgb, var(--color-success) 72%, #e6fff4);
+  border-style: solid;
+  box-shadow:
+    0 0 18px 2px color-mix(in srgb, var(--color-success) 60%, transparent),
+    inset 0 0 18px -2px color-mix(in srgb, var(--color-success) 70%, transparent);
+}
+
+/*
+ * The Defense Point. A crosshair rather than a dot, because it marks an
+ * exact coordinate the player chose and has to be readable as one at any
+ * grid scale.
+ */
+.defensePoint {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-success) 52%, #e6fff4);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-success) 12%, #ffffff) 0 2px, transparent 2.5px);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-success) 30%, transparent),
+    0 0 14px 2px color-mix(in srgb, var(--color-success) 55%, transparent);
+  pointer-events: none;
+}
+
+/* ТЗ §7.12-7.13 — submitted; the marker stops looking adjustable. */
+.defensePointLocked {
+  border-color: color-mix(in srgb, var(--color-success) 72%, #e6fff4);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-success) 30%, transparent),
+    0 0 16px 2px color-mix(in srgb, var(--color-success) 60%, transparent);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-success) 72%, #e6fff4) 0 2px, transparent 2.5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .recon {
+    transition: none;
+  }
+
+  /* The wave is information, not decoration — it still resolves, just instantly. */
+  .waveRing,
+  .waveRingEcho,
+  .waveFlash,
+  .reconArrive {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+    animation-iteration-count: 1;
+  }
+}
+
+/* Stops for the recon corridor's falloff gradient — see `SectorGrid.tsx`
+   for why these are classes rather than `stopColor` attributes. */
+.cloudStopNear {
+  stop-color: var(--color-accent);
+}
+
+.cloudStopMid {
+  stop-color: var(--color-accent-cool);
+}

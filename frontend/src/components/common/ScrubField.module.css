@@ -1,0 +1,219 @@
+/*
+ * ТЗ §5, §13-§14 — a figure with depth under it, not a box with a number
+ * in it.
+ *
+ * There is no border. The control is a dark inner surface with a luminous
+ * edge along the bottom, which is the same "signal edge" the name field
+ * uses: enough to say *this is where the value lives* without drawing a
+ * form around every parameter on the screen.
+ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-label);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, #ffffff08, transparent 44%), color-mix(in srgb, var(--color-bg-panel-alt) 72%, transparent);
+  box-shadow: inset 0 1px 2px #00000059;
+  transition: background 0.16s ease;
+}
+
+.control:hover {
+  background: linear-gradient(180deg, #ffffff0d, transparent 44%), var(--color-bg-panel-alt);
+}
+
+/* The signal edge: a hairline of accent light that lifts on focus. */
+.edge {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: 0;
+  height: 1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+  pointer-events: none;
+}
+
+/*
+ * ТЗ §3, §10 — the calibration strip, drawn only while a scrub is running.
+ *
+ * A repeating gradient rather than a row of elements: the ticks are one
+ * painted layer whose `background-position` follows the pointer, so a drag
+ * across the figure costs a single style write per frame and no DOM at all.
+ * `--scrub` is the pointer's travel in pixels, published from the component.
+ */
+.calibration {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: 5px;
+  height: 5px;
+  opacity: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent) 70%, transparent) 0 1px,
+    transparent 1px 8px
+  );
+  background-position-x: calc(var(--scrub, 0) * 1px);
+  /* Fades out at both ends, so the ticks arrive and leave rather than stop. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.scrubbing .calibration {
+  opacity: 1;
+}
+
+.control:focus-within .edge,
+.scrubbing .edge {
+  background: var(--color-accent);
+  box-shadow: 0 0 12px -1px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+/*
+ * ТЗ §13 — the value is the loud half of the pair, so it is set at display
+ * size and the unit beside it is not.
+ */
+.input {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  transition:
+    color 0.12s ease,
+    text-shadow 0.12s ease;
+  /* The drag is the primary interaction, so the pointer says so. */
+  cursor: ew-resize;
+}
+
+.input:focus {
+  outline: none;
+  cursor: text;
+}
+
+/*
+ * ТЗ §3 — the figure goes to its active state under the pointer: brighter,
+ * with the accent behind it, and unselectable so a drag never leaves a
+ * highlighted string behind it.
+ */
+.scrubbing .input {
+  cursor: ew-resize;
+  user-select: none;
+  color: var(--color-accent-soft);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.suffix {
+  align-self: center;
+  flex: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  pointer-events: none;
+}
+
+/* Secondary by construction: small, dim, and out of the figure's way. */
+.stepper {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+  opacity: 0.55;
+  transition: opacity 0.14s ease;
+}
+
+.control:hover .stepper,
+.control:focus-within .stepper {
+  opacity: 1;
+}
+
+.step {
+  width: 22px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.step:hover:not(:disabled) {
+  color: var(--color-text);
+  background: #ffffff0f;
+}
+
+.step:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.step:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/*
+ * ТЗ §16 — the error lands in space this control already reserved, so a
+ * value going out of range never grows the dialog.
+ */
+.note {
+  display: block;
+  min-height: 1.35em;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--color-text-dim);
+  opacity: 0.8;
+}
+
+.invalid .note {
+  color: var(--color-danger);
+  opacity: 1;
+}
+
+.invalid .edge {
+  background: var(--color-danger);
+  box-shadow: 0 0 12px -2px color-mix(in srgb, var(--color-danger) 70%, transparent);
+}

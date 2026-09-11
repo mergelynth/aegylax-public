@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Three trees, three jobs: `frontend/`, `contracts/`, `api/`.
+# No secrets are used, so this runs on a fork's pull request too.
+jobs:
+  frontend:
+    name: Client
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: the build number is `git rev-list --count HEAD`, and
+      # `protocol-version.mjs` refuses to count a shallow clone rather than
+      # report a number that walks backwards. The default depth-1 checkout
+      # would ship `0.1+sha` from the one job meant to exercise the real
+      # version path.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      # The artifact the demo actually ships. It also exercises
+      # `tools/chain/prebuild.mjs`, which regenerates the contract config
+      # from `deployments/` — a manifest that breaks the generator fails
+      # here rather than on a deploy.
+      - run: npm run build
+
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: npm ci
+        working-directory: contracts
+      # `forge test` builds first, so this covers compilation too — including
+      # the confidential engines and the libraries the proxy links against.
+      - run: forge test -vv
+        working-directory: contracts
+        env:
+          FOUNDRY_PROFILE: ci
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      # Nest compiles under its own tsconfig — `strict`, `noUnusedLocals`,
+      # decorator metadata — which the client's typecheck never looks at. It
+      # has no tests of its own; until it does, this is the check that the
+      # keeper and the faucet at least still build.
+      - run: npm run api:build

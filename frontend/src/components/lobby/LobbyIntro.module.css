@@ -1,0 +1,223 @@
+/*
+ * Mirrors `SpaceHero.module.css` exactly — same anchor under the header,
+ * same width, same fade-in, same type roles. The two screens are one shell
+ * (spec §10), so their opening block has to sit in the same place and read
+ * at the same size; only the words differ.
+ */
+.intro {
+  position: absolute;
+  left: 50%;
+  top: clamp(48px, 14%, 140px);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(640px, 88vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  pointer-events: none;
+  animation: fadeIn 0.7s ease both;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-hero-sub);
+  color: var(--color-text-dim);
+  text-shadow: 0 2px 16px #000000cc;
+  font-variant-numeric: tabular-nums;
+  max-width: 46ch;
+}
+
+.tagline {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-hero-tag);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-accent-muted);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+.cta {
+  pointer-events: auto;
+  box-shadow: var(--shadow-cta);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  pointer-events: auto;
+}
+
+/*
+ * ТЗ §5 — Leave Operation. Not the screen's accent — that stays with
+ * joining — but still a real, legible button rather than bare text: a
+ * defender who has already committed should be able to spot the way out
+ * without hunting for an underline first.
+ */
+.leave {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /*
+   * Well under Buy probe, not beside it. The two used to sit in the same
+   * cluster and read as a pair of equally-weighted moves — one spends, one
+   * walks away — which is how a defender hits the wrong one.
+   */
+  margin-top: 36px;
+  padding: 7px var(--space-3);
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, color-mix(in srgb, var(--color-danger) 88%, #fff0f2) 30%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, color-mix(in srgb, var(--color-danger) 88%, #fff0f2) 8%, transparent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--color-danger) 58%, #fff0f2);
+  text-shadow: none;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.leaveIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.leave:hover:not(:disabled),
+.leave:focus-visible:not(:disabled) {
+  outline: none;
+  color: #fff;
+  background: color-mix(in srgb, color-mix(in srgb, var(--color-danger) 88%, #fff0f2) 15%, transparent);
+  border-color: color-mix(in srgb, color-mix(in srgb, var(--color-danger) 88%, #fff0f2) 50%, transparent);
+}
+
+.leave:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/*
+ * ТЗ §5 — the refund receipt. Green because money came *back*, and quiet
+ * because it is a confirmation rather than an invitation: the screen has
+ * already returned to offering the seat again by the time this appears.
+ */
+.refund {
+  margin: var(--space-2) 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-success) 72%, #e6fff4);
+  text-shadow: 0 2px 16px #000000cc;
+  max-width: 46ch;
+}
+
+/*
+ * ТЗ §10 — the housekeeping transition. Amber rather than green: it is not
+ * the player's own move and it does not pay them anything, it just unblocks
+ * an operation the clock has left behind. The explanation sits under it
+ * because pressing an unfamiliar button that costs gas deserves a sentence.
+ */
+.advance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.advanceButton {
+  /*
+   * `.intro` takes no pointer events so the scene behind the hero stays
+   * draggable through the empty space around the type — which means every
+   * control inside it has to opt back in, exactly as `.cta` and `.leave`
+   * do. Without this the button renders, lights up on hover through no
+   * fault of its own, and swallows nothing: the click lands on the globe.
+   */
+  pointer-events: auto;
+  padding: var(--space-2) var(--space-5);
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-warning-pale) 53%, transparent);
+  background: color-mix(in srgb, var(--color-warning-pale) 10%, transparent);
+  color: color-mix(in srgb, var(--color-warning) 52%, #fff6e0);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.advanceButton:hover:not(:disabled),
+.advanceButton:focus-visible:not(:disabled) {
+  outline: none;
+  background: color-mix(in srgb, var(--color-warning-pale) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning-pale) 80%, transparent);
+}
+
+.advanceButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/*
+ * The automatic transition, in flight. Deliberately quiet type rather than a
+ * button's shape: the operation is moving on its own and there is nothing
+ * here to press, so it should not look like there is.
+ */
+.advanceStatus {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--color-warning) 52%, #fff6e0);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+.advanceNote {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-text-label) 80%, transparent);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+.advanceError {
+  margin: 0;
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--color-danger) 54%, #fff0f2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .intro {
+    top: clamp(32px, 10%, 80px);
+    gap: var(--space-2);
+  }
+}

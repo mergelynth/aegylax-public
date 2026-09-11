@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    /*
+     * CommonJS, which is what Nest's decorator metadata is best trodden on.
+     * The chain tooling under `tools/` is ESM, so the two pieces that reach
+     * into it — the confidential client, and nothing else — cross the
+     * boundary with a dynamic `import()`, which Node resolves at runtime.
+     */
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "../dist-server",
+    "rootDir": "..",
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../frontend/src/contracts/generated/*.json"]
+}

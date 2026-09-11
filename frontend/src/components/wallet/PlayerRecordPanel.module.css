@@ -1,0 +1,284 @@
+/*
+ * The record, as a bento.
+ *
+ * Two earlier passes are the reason this one is shaped the way it is. The
+ * first put every figure in a bordered, filled, rounded box of the same size,
+ * which made a wallet panel read as a second copy of the operation drawer —
+ * `LobbySidePanel` is where boxed sections belong, because it holds unrelated
+ * kinds of thing and the boxes keep them apart. The second removed every
+ * surface and printed the figures straight onto the glass, which was quieter
+ * but flat: four numbers, all the same size, none of them claiming to be the
+ * record.
+ *
+ * The current layout takes the pattern the rest of the industry settled on
+ * for exactly this problem — unequal tiles, where **size is the hierarchy**
+ * and the most important thing gets the largest cell. Interception *is* the
+ * record, so it gets the wide tile, the rate rail and the run of recent
+ * rounds; the streak and the probe count are a row of two beneath it; money
+ * is a footnote and is set as one.
+ *
+ * The surfaces are the modern dark-UI treatment rather than the drawer's:
+ * a barely-there top-lit gradient and a hairline at 7% instead of a tinted
+ * fill and a visible border. They read as depth, not as boxes — which is the
+ * whole difference between this and the first pass.
+ */
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent-cool) 16%, transparent);
+}
+
+/*
+ * The heading takes the width with a rule that fades out rather than a line
+ * that stops — a horizon rather than an edge, so the block above it is not
+ * closed off.
+ */
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  white-space: nowrap;
+}
+
+.heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-accent-cool) 26%, transparent),
+    transparent
+  );
+}
+
+/* Two columns and a 10px gutter: the panel is 330px wide, so this is the
+   same proportion a 16-24px gutter has on a full-width dashboard. */
+.bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+/*
+ * One cell. The fill is a top-lit gradient of white at 5% → 1.5%, which on
+ * this near-black glass reads as a surface catching light from above rather
+ * than as a panel with a colour of its own. The hairline is white at 7%: a
+ * border you find when you look for it and not before.
+ */
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid #ffffff12;
+  background:
+    linear-gradient(180deg, #ffffff0d, #ffffff04),
+    color-mix(in srgb, var(--color-bg-panel) 55%, transparent);
+}
+
+.label {
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  opacity: 0.78;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * The hero figure. Set in the technical face and tabular, like every other
+ * number the product asks somebody to read (see `CommandCenter.module.css`),
+ * and large enough that the tile it sits in is legibly the most important
+ * one on the block.
+ */
+.headline {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 1.62rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+/* "of 4" — the denominator, which is a different fact from the count and is
+   printed as one. */
+.headlineOf {
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+/* The rate sits at the far end of the hero line, where a dashboard would put
+   a delta chip — the number that qualifies the headline, not part of it. */
+.rate {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-accent-cool);
+  white-space: nowrap;
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--tone, var(--color-text));
+}
+
+.money {
+  font-size: 0.82rem;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lost {
+  color: color-mix(in srgb, var(--color-danger) 72%, #fff);
+}
+
+/* The qualifier rides on the figure's baseline. A third line per tile would
+   make this block taller than the address it sits under, which is the thing
+   the panel exists to show. */
+.sub {
+  font-family: inherit;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Two readings are ever worth lighting: a live streak, and money actually
+ * won. A panel where every figure glows says nothing by saying it about all
+ * of them.
+ */
+.lit {
+  --tone: var(--color-accent);
+  color: var(--color-accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 38%, transparent);
+}
+
+.rail {
+  position: relative;
+  display: block;
+  height: 2px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #ffffff14;
+  overflow: hidden;
+}
+
+.railFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(to right, var(--color-accent-cool), var(--color-accent));
+  box-shadow: 0 0 8px -1px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+/*
+ * The last rounds, oldest first — the streak made visible.
+ *
+ * Marks rather than a chart: there is no series here, only outcomes, and a
+ * line through a set of wins and losses would invent a trend between them.
+ * They stretch to fill the tile so the strip stays a strip whether a wallet
+ * has three rounds behind it or twelve.
+ */
+.form {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.formTile {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.mark {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffff1a;
+}
+
+.markWon {
+  background: linear-gradient(to bottom, var(--color-accent-alt), var(--color-accent));
+  box-shadow: 0 0 7px -1px color-mix(in srgb, var(--color-accent) 62%, transparent);
+}
+
+/*
+ * Money, in the same technical face at footnote size: right-aligned figures
+ * over a dim left column, so three amounts of different lengths still line up
+ * on the decimal.
+ */
+.ledger {
+  gap: 4px;
+  margin: 0;
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.term {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+}
+
+.amount {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tone, var(--color-text));
+}
+
+.note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+}

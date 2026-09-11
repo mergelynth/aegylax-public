@@ -1,0 +1,1119 @@
+/* ═════════════════════════════════════════════════════════════════════════
+ * AEGYLAX motion system
+ *
+ * Two layers live here, and the split is the file's organising idea:
+ *
+ *   ENTRANCE     what happens once, on a document load. Every rule is
+ *                scoped to `[data-boot]` (see `app/bootSequence.ts`), so
+ *                the whole layer stops existing a couple of seconds in and
+ *                a route change can never replay it (ТЗ §2, §32).
+ *
+ *   INTERACTION  hover and press. Always live, on every page, forever.
+ *
+ * The rule the entrance layer is built to satisfy is ТЗ §31: **no element
+ * borrows another's animation**. A page where the title, the subtitle, the
+ * tagline and the button all do `opacity 0 → 1, translateY` is a page with
+ * one animation played nine times, and it reads as a loading state rather
+ * than as a system coming up. So each step below has a mechanism of its
+ * own, chosen for what that element *is*:
+ *
+ *   Header      clip wipe            a command interface opening
+ *   Logo        scramble             (JS — `motion/ScrambleText`)
+ *   Shield      activation pulse     a status light coming on
+ *   HUD icons   staggered activation telemetry arriving one channel at a time
+ *   Counters    number trend         (JS — `motion/useCountUp`)
+ *   Wallet      clip wipe, inward    the same gesture as the header, mirrored
+ *   Title       scramble             (JS — the page's loudest motion)
+ *   Subtitle    masked reveal        a line coming into focus
+ *   Tagline     phrase stagger       three statements, in order
+ *   CTA         command activation   a control becoming available
+ *   Ways in     signal acquired      a mark locks, two destinations open
+ *   Encrypted   border activation    a seal engaging
+ *   Earth       slow dawn            a planet materializing
+ *
+ * What they share instead is a *curve* and a *clock*: one easing token, and
+ * one table of delays. That is what makes thirteen different mechanisms
+ * read as one system rather than as thirteen ideas (ТЗ §30).
+ *
+ * Nothing here supplies a resting state. Every element is already final and
+ * fully opaque with this file absent; the keyframes only play it in, held
+ * at their first frame through the delay by `backwards`. A build whose
+ * JavaScript never runs shows a finished page (ТЗ §32).
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /*
+   * One curve for the entire system (ТЗ §30). Ease-out cubic: leaves at
+   * speed, settles without overshoot. No bounce and no elastic anywhere in
+   * this file — those read as playful, and this interface is claiming to be
+   * a defense protocol.
+   */
+  --boot-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /*
+   * The one exception, and it is for interaction rather than entrance: a
+   * press needs a little life on the way back or it feels dead. Kept just
+   * past 1 — a spring, not a bounce.
+   */
+  --press-ease: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 1. THE CLOCK
+ *
+ * The whole sequence, as one table. Read down the delay column and you are
+ * reading ТЗ §2's running order. The JavaScript-driven steps (the three
+ * scrambles, the counters, the signal field) keep their delays in
+ * `src/motion/timeline.ts` and are folded into the same column there — if
+ * you move a step here, look there too.
+ *
+ * The screen itself is complete at 1900ms (Earth), and the overlaps in
+ * between are deliberate: steps start while the one before is still
+ * finishing, so it comes up as one continuous initialization.
+ *
+ * The brand cluster sits outside this table entirely — see "the brand
+ * signs itself" below. Nothing in that group is gated on `[data-boot]`, so
+ * none of it appears in these rows.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.boot-header    { --boot-delay: 0ms;    --boot-duration: 420ms; }
+.boot-wallet    { --boot-delay: 240ms;  --boot-duration: 380ms; }
+.boot-icon      { --boot-delay: 380ms;  --boot-duration: 280ms; }
+.boot-dot       { --boot-delay: 420ms;  --boot-duration: 240ms; }
+.boot-title     { --boot-delay: 300ms;  --boot-duration: 260ms; }
+.boot-subtitle  { --boot-delay: 620ms;  --boot-duration: 420ms; }
+.boot-tagline   { --boot-delay: 760ms;  --boot-duration: 320ms; }
+.boot-earth     { --boot-delay: 400ms;  --boot-duration: 1500ms; }
+.boot-cta       { --boot-delay: 940ms;  --boot-duration: 420ms; }
+.boot-docs      { --boot-delay: 1000ms; --boot-duration: 340ms; }
+.boot-seal      { --boot-delay: 1120ms; --boot-duration: 300ms; }
+.boot-seal-state{ --boot-delay: 1260ms; --boot-duration: 520ms; }
+.boot-clock     { --boot-delay: 1500ms; --boot-duration: 420ms; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 2. HEADER — clip wipe (ТЗ §3)
+ *
+ * It opens horizontally rather than fading: a fade says "the page loaded",
+ * a wipe says "the interface came up", and the header is the first thing
+ * on screen so it sets which of those the next 1.9 seconds will be.
+ *
+ * `clip-path` rather than a width or a scale, because the header's contents
+ * must not move while it opens — the brand, the HUD and the wallet are laid
+ * out once and revealed in place. Anything that animated the box itself
+ * would reflow all three.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-header {
+  animation: boot-wipe-right var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-wipe-right {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 3. WALLET PANEL — the same wipe, mirrored (ТЗ §7)
+ *
+ * It opens from its own outer edge inward, which is the header's gesture
+ * read from the other end of the bar. Same mechanism on purpose: these are
+ * the two ends of one piece of chrome, and giving them opposite gestures
+ * would make the header look like it was assembled from parts.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-wallet {
+  animation: boot-wipe-left var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-wipe-left {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 4. TELEMETRY — the status icons and the shield (ТЗ §4, §6)
+ *
+ * A status glyph does not arrive; it *comes on*. So these do not move at
+ * all: they brighten from dim to their own colour with one short bloom
+ * behind them, which is what a channel going live looks like on any
+ * instrument ever built.
+ *
+ * The row staggers by `--boot-index`, set per metric in the markup, so the
+ * five channels light left to right instead of together — "telemetry
+ * online" rather than "five icons appeared". 70ms apart: enough to read as
+ * a sequence, not enough to read as a wait.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-icon {
+  animation: boot-activate var(--boot-duration) var(--boot-ease)
+    calc(var(--boot-delay) + var(--boot-index, 0) * 70ms) backwards;
+}
+
+[data-boot] .boot-dot {
+  animation: boot-activate var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-activate {
+  from {
+    opacity: 0;
+    filter: brightness(0.25) drop-shadow(0 0 0 transparent);
+  }
+  60% {
+    opacity: 1;
+    /* The bloom, at its brightest — one pulse, on the way to normal. */
+    filter: brightness(1.7) drop-shadow(0 0 6px color-mix(in srgb, var(--color-accent) 65%, transparent));
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 5. TITLE — the carrier under the scramble (ТЗ §9)
+ *
+ * The title's motion is the scramble in `motion/ScrambleText`; this is only
+ * what keeps the first frame of noise from appearing out of nothing. Pure
+ * opacity, short, and finished long before the decode is — by the time the
+ * characters start locking, this has been over for half a second.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-title {
+  animation: boot-emerge var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+/*
+ * The plainest step in the system, and the most reused: the carrier under
+ * both scrambles, the status icon's fade, and every element's behaviour
+ * under reduced motion. Nothing but opacity — anything that arrives without
+ * a mechanism of its own arrives through this.
+ */
+@keyframes boot-emerge {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 6. SUBTITLE — masked reveal (ТЗ §10)
+ *
+ * "Slightly masked → soft reveal → fully visible": the line is uncovered
+ * downward behind a moving edge while it rises the last few pixels into
+ * place. Not a fade — the eye is given a direction to read in, which is
+ * what makes one sentence of prose feel deliberate rather than merely
+ * present.
+ *
+ * `clip-path` again rather than an `overflow` wrapper, so no extra element
+ * is introduced and the paragraph's text-shadow keeps working the instant
+ * the animation is over.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-subtitle {
+  animation: boot-unmask var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-unmask {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 7. TAGLINE — phrase stagger (ТЗ §11)
+ *
+ * Three statements, and the motion's whole job is to say that they are
+ * three. Each phrase slides in from very slightly behind the last, 90ms
+ * apart — small enough that they overlap into one gesture, large enough
+ * that the eye reads them in order: find where, then find when, then
+ * intercept.
+ *
+ * Horizontal rather than vertical, which is the only place in the sequence
+ * anything moves sideways. That is deliberate: it is what stops three
+ * short lines of accent text from looking like the subtitle happening
+ * again.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-tagline > span {
+  animation: boot-phrase var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+[data-boot] .boot-tagline > span:nth-child(2) {
+  animation-delay: calc(var(--boot-delay) + 90ms);
+}
+
+[data-boot] .boot-tagline > span:nth-child(3) {
+  animation-delay: calc(var(--boot-delay) + 180ms);
+}
+
+@keyframes boot-phrase {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 8. CTA — command activation (ТЗ §12)
+ *
+ * "Compact inactive surface → clip/scale activation → fully active
+ * button": it opens from a slot in its own middle out to its full width,
+ * coming up to size as it goes. A control becoming available, rather than
+ * a button fading in.
+ *
+ * The scale is 0.94 and no lower. This is the one element on the page a
+ * player is meant to press, and a CTA that grows noticeably reads as a
+ * flourish; the size change is here to make the clip feel like *opening*
+ * rather than like a curtain, and nothing more (ТЗ §14 rules out big
+ * scale explicitly).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-cta {
+  animation: boot-command var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-command {
+  from {
+    opacity: 0;
+    clip-path: inset(0 42% 0 42%);
+    transform: scale(0.94);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 9. THE WAYS IN — signal acquired (ТЗ §15)
+ *
+ * The row below the CTA is a navigation *system* rather than a few links
+ * (see `SpaceHero.module.css`), and it arrives as one: the signal marks
+ * between the labels light first, and the row then opens outward from its
+ * middle — the outer labels pushing left and right, and any label sitting
+ * on the centre opening from its own middle in both directions at once.
+ *
+ * It replaces a rolling reveal — the label climbing into its window from
+ * below, which was the same gesture the CTA's hover uses. That was
+ * deliberate once, and wrong by the time the row stopped being two more
+ * calls to action: borrowing the button's motion is precisely what made
+ * these read as buttons. What they do now is the thing they *are*.
+ *
+ * The mirrored push is the header and the wallet's argument, one row down.
+ * Opposite pushes from a common centre say "these are parts of one object";
+ * identical fades would say "here are some more elements".
+ *
+ * Nothing here may move a *box*. The labels sit either side of 5px marks on
+ * a centred row, and animating their layout would walk those marks back and
+ * forth across the middle of the hero for a third of a second. The outer
+ * labels therefore travel on `transform`, and the centre one opens on
+ * `clip-path` — which reveals without reflowing, so it obeys the same rule
+ * by a different means. A roll or a scale is deliberately not used: that is
+ * the CTA's gesture, and borrowing it is what made this row read as more
+ * buttons the last time it was tried.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-docs .motion-nav-mark {
+  /*
+   * Ahead of the labels and shorter than them: the mark is the thing that
+   * *acquires*, and an indicator that comes up alongside what it points at
+   * is not pointing at anything.
+   */
+  animation: boot-nav-lock 200ms var(--boot-ease) var(--boot-delay) backwards;
+}
+
+[data-boot] .boot-docs .motion-nav:first-child .motion-nav-label {
+  animation: boot-nav-left var(--boot-duration) var(--boot-ease) calc(var(--boot-delay) + 140ms) backwards;
+}
+
+[data-boot] .boot-docs .motion-nav:last-child .motion-nav-label {
+  animation: boot-nav-right var(--boot-duration) var(--boot-ease) calc(var(--boot-delay) + 140ms) backwards;
+}
+
+/*
+ * Anything between the ends — written as "not either end" rather than as a
+ * position, so a fourth way in does not arrive already visible while every
+ * label around it opens.
+ */
+[data-boot] .boot-docs .motion-nav:not(:first-child):not(:last-child) .motion-nav-label {
+  animation: boot-nav-centre var(--boot-duration) var(--boot-ease) calc(var(--boot-delay) + 140ms) backwards;
+}
+
+/* A point of light coming on: it arrives at its full glow and settles back
+   to the dark ring it rests as, which is a lock closing rather than a dot
+   appearing. Same idea as the seal chip's `boot-seal-engage`, three sizes
+   down. */
+@keyframes boot-nav-lock {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+    box-shadow: 0 0 12px 2px color-mix(in srgb, var(--color-accent) 60%, transparent);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 transparent;
+  }
+}
+
+@keyframes boot-nav-left {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes boot-nav-right {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* The centre has nowhere to push from, so it opens *as* the centre: a label
+   revealed outward from its own middle, in both directions at once. */
+@keyframes boot-nav-centre {
+  from {
+    opacity: 0;
+    clip-path: inset(0 50% 0 50%);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 10. TRAJECTORY LINE — the handshake (ТЗ §16, §17)
+ *
+ * The line as a whole comes up quietly, because the motion that matters
+ * here is the decode running along it in JavaScript (see `SpaceHero`):
+ * the label, then the cipher blocks, then ENCRYPTED resolving, then the
+ * provider. This is the carrier for all of that.
+ *
+ * The chip is the exception, and is the only step in the sequence that
+ * animates *colour* rather than geometry: it arrives charged — lit border,
+ * pale ink, a little bloom — and settles. A seal engaging. It is what makes
+ * the confidentiality claim the one beat that says something *happened*
+ * rather than something appeared.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-seal {
+  animation: boot-emerge var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+[data-boot] .boot-seal-state {
+  animation: boot-seal-engage var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-seal-engage {
+  from {
+    color: var(--color-accent-soft);
+    border-color: color-mix(in srgb, var(--color-accent) 90%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  to {
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+    background: transparent;
+    box-shadow: 0 0 0 transparent;
+  }
+}
+
+/*
+ * ТЗ §16-§17 — and then the whole line keeps working, as one indicator.
+ *
+ * This is the resting state of the trajectory readout, and the rule it is
+ * built to satisfy is ТЗ §17: the provider credit must not blink
+ * independently of the blocks, and the badge must not blink independently
+ * of either. They are not three animated elements that happen to sit on a
+ * line — they are one status indicator with three parts, and the way that
+ * is said is that they share a keyframe, an easing and a step interval,
+ * and differ only in where they sit in the wave.
+ *
+ * `--wave-step` continues the numbering the cipher blocks started (0, 1, 2
+ * in `CipherBlocks.module.css`), so the signal appears to run the length of
+ * the line — blocks, then ENCRYPTED, then the provider — exactly as ТЗ §16
+ * draws it:
+ *
+ *     TRAJECTORY  ████ ████ ████  [ ENCRYPTED ]  … Fhenix CoFHE
+ *                  ──── signal ────────────────────────▶
+ *
+ * 4.8s is twice the blocks' 2.4s cycle, which is what keeps the two from
+ * ever drifting into an arbitrary relationship: the badge breathes once per
+ * two passes of the signal, forever, rather than slowly sliding in and out
+ * of phase with it.
+ *
+ * Outside `[data-boot]` because it is a resting state rather than part of
+ * the entrance — while the attribute is present, the engage animation above
+ * outranks this and the line is still arriving.
+ */
+.seal-live {
+  animation: seal-hold 4.8s ease-in-out infinite;
+  animation-delay: calc(var(--wave-step, 0) * 0.42s);
+}
+
+/*
+ * A few hundredths of opacity, and a border that comes up with it on the
+ * one element that has a border. A seal *holding*, not a light flashing:
+ * you notice it only if you look straight at it for several seconds, which
+ * is the right amount of attention for a status that never changes.
+ */
+@keyframes seal-hold {
+  0%,
+  100% {
+    opacity: 0.84;
+    border-color: color-mix(in srgb, var(--color-accent) 34%, transparent);
+  }
+  22% {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--color-accent) 62%, transparent);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 11. EARTH — the slow dawn (ТЗ §18)
+ *
+ * The longest motion on the page, and the only one that is a *mass*
+ * arriving rather than a label appearing. It gets the longest duration,
+ * because ТЗ §30 puts it second only to the title in the attention
+ * hierarchy and amplitude is how that is said — and here the amplitude is
+ * time rather than travel.
+ *
+ * The planet does not open, grow or arrive from anywhere: it is simply
+ * there, at first too faint to read, and comes up out of the black over a
+ * second and a half. Nothing about its geometry moves, so the globe never
+ * looks inflated or cut out of the page — the only thing that changes is
+ * how much of it the eye can see.
+ *
+ * Two things follow from that. Its delay moves *earlier* than the steps
+ * around it while it still finishes last: a dawn has to be under way before
+ * anyone notices it started, so it begins at 400ms, under the subtitle and
+ * the tagline, and is still resolving when they have landed. And it runs
+ * `linear`, the one step in the system that does not take `--boot-ease`.
+ * The shared curve leaves at speed and settles, which is right for an
+ * element that travels; on a bare opacity ramp it would put the planet more
+ * than half visible in the first quarter of a second and then crawl, which
+ * is a fast appearance with a long tail rather than a slow one.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-earth {
+  animation: boot-earth-dawn var(--boot-duration) linear var(--boot-delay) backwards;
+}
+
+@keyframes boot-earth-dawn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 12. EARTH COUNTDOWN — settling into place (ТЗ §24)
+ *
+ * Last, and quietest. It sits *on* the planet, so it has nothing to sit on
+ * until the planet is there — and once there it does the smallest thing in
+ * the whole sequence, because a clock that arrives with a flourish is a
+ * clock nobody trusts.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+[data-boot] .boot-clock {
+  animation: boot-settle var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+@keyframes boot-settle {
+  from {
+    opacity: 0;
+    transform: translate(var(--anchor-x, 0px), calc(var(--anchor-y, 0px) + 5px)) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate(var(--anchor-x, 0px), var(--anchor-y, 0px)) scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * THE BRAND SIGNS ITSELF
+ *
+ * The last thing to happen on the page, and the only group that runs after
+ * the interface is already complete. Everything above has landed by 1900ms;
+ * then, and only then, the corner identifies itself:
+ *
+ *   1950ms  AEGYLAX types, letter by letter   (`motion/NeonType`)
+ *   2960ms  PLANETARY DEFENSE unmasks     ┐   together, once the last
+ *   2960ms  the protocol shield fades in  ├─  letter is on screen
+ *   2960ms  the jackpot is hung           ┘
+ *   4260ms  and then the jackpot lights
+ *
+ * All three start on the same frame, which is what makes the corner resolve
+ * as one beat rather than as three arrivals. They do not all *say* the same
+ * thing, though: the shield and the subtitle fade, and the jackpot is hung —
+ * it lands oversized and crooked, swings twice, and is level and at size
+ * only once it has stopped moving. The neon is the fourth line above and a
+ * separate animation: the sign goes up dark, and is switched on where it
+ * ends up rather than while it is still travelling.
+ *
+ * That is a deliberate exception to the rule stated on `.sign-shield` below,
+ * which is why this note exists rather than the rule quietly changing. The
+ * shield stays plain *because* the jackpot does not: it is a status light,
+ * the thing beside it is a prize, and only one of a pair can be the loud
+ * half. The jackpot is the one worth looking at.
+ *
+ * 3800ms is 170ms after the final letter is struck (1950 + 6 x 280 =
+ * 3630ms). It is deliberately *not* the moment the wordmark's animation
+ * ends — each letter spends 1120ms cooling its glow, so that would be
+ * 4750ms, and the corner would sit unfinished through a full second of
+ * halo fading. What has to hold is that no letter is still missing when
+ * these arrive; there is a test that says so, because the two numbers live
+ * in different files.
+ *
+ * The number moved once already, when the letters were slowed to 280ms
+ * apiece: this delay is a consequence of the typing cadence rather than a
+ * value of its own, and it has to be re-derived every time that changes.
+ *
+ * **Not gated on `[data-boot]`, deliberately.** The attribute comes off at
+ * 2100ms, which is all the entrance proper needs, and stretching it past
+ * four seconds to cover this group would mean a round trip to How to Play
+ * and back inside that window replayed the whole page. Instead the classes
+ * themselves are the gate: `Header` and `ProtocolStatus` ask
+ * `useBootEntrance` once at mount and only then apply them, exactly as
+ * `NeonType` does for the letters. On any other mount the class is absent
+ * and the element is simply there.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
+ * 3800ms — the end of the wordmark's *word*, not of its animation.
+ *
+ * The last letter is struck at 3630ms and then spends a full second cooling
+ * its glow; waiting for that to finish would mean a second of watching a halo
+ * fade with nothing else happening. Landing 170ms after the final letter
+ * appears, the corner completes while the neon is still going out rather than
+ * after it.
+ *
+ * Durations are untouched. This delay tracks the typing cadence and nothing
+ * else — it followed the letters from 2960ms when they were slowed to 280ms
+ * apiece, and it is the wait that moves, never the movement.
+ */
+.sign-shield   { --boot-delay: 3800ms; --boot-duration: 420ms; }
+.sign-subtitle { --boot-delay: 3800ms; --boot-duration: 340ms; }
+/* Much longer than the two beside it, because it has a sequence to get
+   through rather than a value to cross-fade — see the keyframes. Same start,
+   so the group still arrives together; the extra second is the settling.
+
+   The neon is a *second* animation with its own clock, and its delay is the
+   first one's end rather than a number: the sign is placed, and only then
+   does it light. Written as a `calc` so the two can never drift apart when
+   the placement is retimed. */
+.sign-jackpot  {
+  --boot-delay: 3800ms;
+  --boot-duration: 1300ms;
+  --boot-neon-delay: calc(var(--boot-delay) + var(--boot-duration));
+  --boot-neon-duration: 900ms;
+}
+
+/*
+ * The status icon, plainly from transparent to visible.
+ *
+ * A fade and nothing else: it arrives *with* the subtitle, and the eye can
+ * only be given one thing to follow at a time. The bloom it used to take
+ * (`boot-activate`, which the HUD glyphs and the wallet light still use)
+ * would have made the shield the loud half of a pair that is supposed to
+ * land as one beat.
+ */
+.sign-shield {
+  animation: boot-emerge var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+/*
+ * The jackpot, arriving as a sign being hung rather than as a value fading
+ * up — and then, once it is hanging still, lighting up.
+ *
+ * Two animations, not one, because they are two events:
+ *
+ *   place   `sign-jackpot-strike`. 1.5x and tilted down to level and size.
+ *           It lands oversized and is *put* into its slot, which is what
+ *           makes a 32px pill readable as an arrival at all; the pill is
+ *           diagonal for the whole shake and horizontal only once it has
+ *           stopped, so "settled" and "straight" are the same moment.
+ *   light   `sign-jackpot-neon`, starting the frame the placement ends. The
+ *           sign is screwed to the wall first and switched on second, which
+ *           is the order the real object would go in — and it means the
+ *           flare happens where the eye has already come to rest instead of
+ *           on a pill that is still travelling. `boot-activate`'s shape in
+ *           the pill's own warm hue: hard flare, then a long cool. The
+ *           `drop-shadow` pair follows the pill's rounded outline, so the
+ *           halo is the sign's own shape rather than a rectangle behind it.
+ *
+ * The shake is three movements, not a jitter, and the count is the whole
+ * point: two is a wobble and five is a vibration, three is a thing being
+ * hung and let go of. Each movement is a rotation through the level plus a
+ * translate along the same -x/+y diagonal `metric-shake` uses in
+ * `JackpotHud.module.css` — the reaction this element already has when the
+ * pot moves. The entrance is that reaction played once, big and slow, so the
+ * first thing the pill ever does is teach you what its alert looks like.
+ *
+ * **The swing is even, and two details are what make it so.**
+ *
+ * `translate` is written *before* `scale`, so the offsets are in the
+ * header's pixels rather than in the pill's. With the old order the same
+ * 9px at 1.34x travelled 12px while 7px at 1.17x travelled 8px — a swing
+ * built to decay 9 -> 7 was in fact throwing the pill half again as far
+ * right as it ever came back left, which reads as a lean rather than as a
+ * settle. And the opening pose carries its own translate now: it used to be
+ * tilted at the origin, so the first movement was a 12px throw and the
+ * second an 8px return of something that had never left.
+ *
+ * Amplitude decays by three quarters each time — 9deg -> 6.75 -> 4.5 -> 0,
+ * with the offset tied to the angle at the same ratio — and the third
+ * movement is the one that lands: nothing is added at the end to stop the
+ * swing, it arrives level because that is where it had got to. Roughly
+ * 360ms per movement, which is slow enough to read each one as a separate
+ * travel rather than as a blur.
+ *
+ * `transform` and `filter` are both gone the moment their animation ends,
+ * which matters for the second one: it would otherwise leave a stacking
+ * context around the hover tooltip for the life of the page. The neon's own
+ * `from` is `filter: none` for the same reason — it is `backwards`-filled
+ * across the whole placement, and a `drop-shadow(0 0 0 transparent)` there
+ * would be an invisible stacking context that is nonetheless real.
+ */
+.sign-jackpot {
+  animation:
+    sign-jackpot-strike var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards,
+    sign-jackpot-neon var(--boot-neon-duration) ease-out var(--boot-neon-delay) backwards;
+}
+
+@keyframes sign-jackpot-strike {
+  from {
+    opacity: 0;
+    transform: translate(-8px, 8px) rotate(-9deg) scale(1.5);
+  }
+  /* Full size, tilted, hanging off the left of the swing — the sign is up
+     but not yet placed, and not yet lit either. */
+  16% {
+    opacity: 1;
+    transform: translate(-8px, 8px) rotate(-9deg) scale(1.5);
+  }
+  /* One. */
+  44% {
+    transform: translate(6px, -6px) rotate(6.75deg) scale(1.34);
+  }
+  /* Two. */
+  72% {
+    transform: translate(-4px, 4px) rotate(-4.5deg) scale(1.17);
+  }
+  /* Three, and it is already where it belongs. */
+  to {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+}
+
+/* The switch being thrown, on a pill that is by now level and still. */
+@keyframes sign-jackpot-neon {
+  from {
+    filter: none;
+  }
+  /* The flare, near the top of the beat so the rest of it is the cool. */
+  22% {
+    filter: brightness(1.8)
+      drop-shadow(0 0 7px color-mix(in srgb, var(--color-warning) 85%, transparent))
+      drop-shadow(0 0 18px color-mix(in srgb, var(--color-warning) 45%, transparent));
+  }
+  to {
+    filter: none;
+  }
+}
+
+/* The same masked reveal it always had, just moved to the end. */
+.sign-subtitle {
+  animation: boot-unmask var(--boot-duration) var(--boot-ease) var(--boot-delay) backwards;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * INTERACTION LAYER
+ *
+ * Everything below is live for as long as the page is, and has nothing to
+ * do with `[data-boot]`. ТЗ §32: the entrance runs once; hover and press
+ * work forever.
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 13. ROLLING TEXT (ТЗ §13, §15, §27)
+ *
+ * The label climbs out of a one-line window and an identical copy climbs in
+ * behind it, so the text appears to roll in place without ever changing.
+ * That is the trick, and the reason the second copy is `aria-hidden`: there
+ * is only one label here, said once, however many times it rolls.
+ *
+ * A window exactly one line tall (`1lh`) rather than a measured height —
+ * the two copies are the same string in the same type, so the line box is
+ * by definition the right size, and nothing has to be kept in sync.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.motion-roll {
+  display: inline-block;
+  /*
+   * The window is exactly one line tall, and the line height is stated here
+   * rather than inherited so that it is: `height` and `line-height` have to
+   * agree exactly, or the track's -50% lands off by the difference and a
+   * sliver of the second copy shows at rest. Declaring both from the same
+   * number is what makes that impossible.
+   *
+   * (`1lh` would say this more directly and is not used on purpose — where
+   * it is unsupported the declaration is dropped, the window grows to fit
+   * both copies, and the label renders twice.)
+   */
+  line-height: 1.25;
+  height: 1.25em;
+  overflow: hidden;
+  /* Baseline-aligning a fixed-height inline-block would hang it below its
+     line; `bottom` sits it on the text baseline of whatever contains it. */
+  vertical-align: bottom;
+}
+
+.motion-roll-track {
+  display: block;
+  transition: transform 0.34s var(--boot-ease);
+}
+
+.motion-roll-track > span {
+  display: block;
+}
+
+.motion-roll-host:hover .motion-roll-track,
+.motion-roll-host:focus-visible .motion-roll-track {
+  transform: translateY(-50%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 14. PRESS (ТЗ §14, §15, §27)
+ *
+ * A press compresses very slightly and springs back. Two per cent — the
+ * amount a physical key travels, not the amount a toy does. ТЗ §14 rules
+ * out bounce, rotation and large scale by name, and this is what is left
+ * when you take all three away: the feeling that the surface accepted the
+ * press.
+ *
+ * On `:active` so it tracks the pointer being *down* rather than the click
+ * completing, which is what makes it feel like the button and not like an
+ * animation about the button.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.motion-press {
+  transition: transform 0.16s var(--press-ease);
+}
+
+.motion-press:active {
+  transform: scale(0.98);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 15. ICON HOVER — the bobble, dialled well down (ТЗ §6, §25, §28)
+ *
+ * "Significantly weaker than the original": five per cent of scale and a
+ * degree and a half of tilt, on a 16px glyph. That is roughly one pixel of
+ * movement — felt rather than seen, which is the correct weight for a
+ * hover on a readout the player is not being invited to click.
+ *
+ * The spring is in the curve rather than in a physics engine: `--press-ease`
+ * overshoots a little on the way in and settles, which at this amplitude is
+ * indistinguishable from the real thing and costs nothing per frame.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.motion-icon {
+  transition:
+    transform 0.22s var(--press-ease),
+    filter 0.22s var(--boot-ease);
+}
+
+:hover > .motion-icon,
+:focus-visible > .motion-icon {
+  transform: scale(1.05) rotate(-1.5deg);
+  filter: brightness(1.25);
+}
+
+/*
+ * ТЗ §26 — the figure beside a hovered glyph, one step brighter.
+ *
+ * Brightness only: no transform, and above all no colour. Each metric's
+ * number is already carrying its tone (attacks, defenses, intercepted,
+ * impacts, epoch), and a hover that rewrote that colour would say the
+ * metric had changed rather than that the pointer was on it.
+ *
+ * ТЗ §26 also warns against turning the HUD into an arcade cabinet, which
+ * is why the number does not get a trend effect on hover. It rolls once, at
+ * initialization, and never again.
+ */
+.motion-glow {
+  transition: filter 0.22s var(--boot-ease);
+}
+
+:hover > .motion-glow,
+:focus-visible > .motion-glow {
+  filter: brightness(1.18);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 16. HOVER REVEAL (ТЗ §8, §26)
+ *
+ * A secondary readout lifting very slightly and brightening under the
+ * pointer. Used on the wallet panel's own text, where ТЗ §8 is explicit
+ * that the panel must not grow: nothing here changes a box, only its ink.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.motion-reveal {
+  transition:
+    opacity 0.24s var(--boot-ease),
+    transform 0.24s var(--boot-ease),
+    color 0.24s var(--boot-ease);
+}
+
+.motion-reveal-host:hover .motion-reveal,
+.motion-reveal-host:focus-within .motion-reveal {
+  opacity: 1;
+  transform: translateY(-1px);
+  color: var(--color-text);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * HIDDEN PAGE
+ *
+ * Nothing above is worth a single frame while the window is behind another
+ * one, and the browser cannot be relied on to work that out — a tab
+ * switched away from is suspended, but a window merely *covered* by
+ * another application's is still a visible tab in every engine except
+ * Chrome, and Chrome only stops once it decides the window is fully
+ * occluded. Two browsers open on the same app, switched between, is
+ * precisely the case that falls through that gap: the one in the back keeps
+ * turning the planet, pulsing fifty surface markers and re-blurring a
+ * headline's glow, forever, for nobody.
+ *
+ * `app/pageVisibility` puts `data-hidden` on the document and this stops
+ * the whole CSS half of the motion system with it. Deliberately every
+ * animation rather than a list of the expensive ones: a list is a thing to
+ * forget to add to, and the cheap ones are only cheap next to the globe —
+ * they are not free, and none of them is being watched either.
+ *
+ * `paused` and not `none`: an animation holds its position while paused and
+ * carries on from there, so coming back to the window is a resumption. With
+ * `none` every idle loop would restart from its first keyframe at once and
+ * the surface would come up in lockstep — the exact failure ТЗ §7 spends
+ * fifty different periods avoiding.
+ *
+ * Transitions are left alone. They are finite, they are started by an
+ * interaction a hidden page is not receiving, and cutting them here would
+ * only mean a hover that was in flight when the window went away snaps on
+ * the way back instead of finishing.
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+[data-hidden] *,
+[data-hidden] *::before,
+[data-hidden] *::after {
+  animation-play-state: paused !important;
+  will-change: auto !important;
+}
+
+/*
+ * Earth's yaw is one compositor transform and the same function of UTC
+ * on every client. Parking it on blur desyncs the globe; everything
+ * else above (surface pulses, HUD, Motion loops) stays paused.
+ */
+[data-hidden] [data-earth-spin] {
+  animation-play-state: running !important;
+  will-change: transform !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * 17. ROUTE CHANGE — the screen behind the frame (View Transitions)
+ *
+ * The app is one shell with four screens in it (`app/routes`), and until
+ * this existed a route change was a cut: the whole window replaced in a
+ * single frame, including the header, which had not moved, and the planet,
+ * which was on both sides of the change. A cut is what a document does. A
+ * *system* keeps its frame and swaps what is inside it.
+ *
+ * Three things follow from that, and they are the three blocks below.
+ *
+ * **The frame does not move.** The header is named, so the browser lifts it
+ * out of the page snapshot and morphs it from itself to itself — which is
+ * to say it stays exactly where it is while everything else changes. Naming
+ * it is how you say "this element is the same element", and it is the whole
+ * mechanism: without a name it would be part of the outgoing picture and
+ * would fade out and back in for no reason.
+ *
+ * **The planet is the same planet.** Home and an Operation both hold the
+ * scene, and they are the two routes anybody moves between more than once.
+ * Given a shared name the browser tweens the one to the other — the globe
+ * grows out of the hero into the operation's square and back — so the
+ * navigation reads as the camera moving rather than as two pages that both
+ * happen to have an Earth in them. This is the one effect on the page that
+ * no amount of CSS on either screen could have produced: neither route can
+ * see the other's layout, and the browser can see both.
+ *
+ * **Everything else is content, and content arrives.** A short lift out and
+ * a slightly longer rise in, on opacity and transform only — no clip, no
+ * blur, nothing that costs a full-screen repaint mid-navigation.
+ *
+ * Unsupported browsers get the cut they already had: React Router calls
+ * `startViewTransition` when it is there and navigates plainly when it is
+ * not, and every rule below addresses pseudo-elements that only exist
+ * during a transition.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+::view-transition-old(root) {
+  animation: route-leave 150ms ease-in both;
+}
+
+::view-transition-new(root) {
+  animation: route-arrive 300ms var(--boot-ease) both;
+}
+
+@keyframes route-leave {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes route-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/*
+ * The planet, tweened between the two shapes it is drawn in. Longer than
+ * the content change and on the boot easing, because this is the one part
+ * of the navigation the eye actually follows — the rest is a page arriving
+ * behind it.
+ */
+::view-transition-group(space-scene) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--boot-ease);
+}
+
+::view-transition-old(space-scene),
+::view-transition-new(space-scene) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--boot-ease);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * REDUCED MOTION (ТЗ §17 of the load spec; honoured across both layers)
+ *
+ * Every mechanism above collapses to the same short fade, at the same
+ * instant, with no travel, no clipping and no stagger — the page resolves
+ * instead of snapping, and nobody who asked for less motion is made to sit
+ * through a two-second cascade to read it.
+ *
+ * The interaction layer loses its transitions entirely and the idle seal
+ * stops breathing. Hover and press still *work*; they simply arrive rather
+ * than travel. The JavaScript half of the system asks the same question
+ * separately — see `motion/prefersReducedMotion`.
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-boot] .boot-header,
+  [data-boot] .boot-wallet,
+  [data-boot] .boot-icon,
+  [data-boot] .boot-dot,
+  [data-boot] .boot-title,
+  .sign-shield,
+  .sign-jackpot,
+  .sign-subtitle,
+  [data-boot] .boot-subtitle,
+  [data-boot] .boot-tagline > span,
+  /*
+   * The phrase stagger is set by `:nth-child` rules above, which outrank a
+   * plain class selector — so the three delays survive this block unless
+   * they are named at the same specificity. Without these two lines the
+   * tagline still arrives in pieces 180ms apart for someone who asked for
+   * no motion at all.
+   */
+  [data-boot] .boot-tagline > span:nth-child(2),
+  [data-boot] .boot-tagline > span:nth-child(3),
+  [data-boot] .boot-earth,
+  [data-boot] .boot-cta,
+  [data-boot] .boot-docs .motion-nav-mark,
+  /*
+   * Named at the specificity they are declared at, for the reason the
+   * tagline's phrases are: these carry positional pseudo-classes of their
+   * own, and a plainer selector here would lose to them and leave the row
+   * still opening outward for someone who asked for none of it.
+   *
+   * The centre rule is the loudest of the three — two `:not()`s, each
+   * counting as a class — so it has to be repeated exactly rather than
+   * approximated, or the middle label alone would keep clipping open.
+   */
+  [data-boot] .boot-docs .motion-nav:first-child .motion-nav-label,
+  [data-boot] .boot-docs .motion-nav:last-child .motion-nav-label,
+  [data-boot] .boot-docs .motion-nav:not(:first-child):not(:last-child) .motion-nav-label,
+  [data-boot] .boot-seal,
+  [data-boot] .boot-seal-state,
+  [data-boot] .boot-clock {
+    animation-name: boot-emerge;
+    animation-duration: 200ms;
+    animation-delay: 0ms;
+  }
+
+  .seal-live,
+  .motion-roll-track,
+  .motion-press,
+  .motion-icon,
+  .motion-glow,
+  .motion-reveal {
+    animation: none;
+    transition: none;
+  }
+
+  /*
+   * A route change goes back to being instant. Nothing here can be reduced
+   * to "a shorter version of itself" — a screen sliding half as far is
+   * still a screen sliding — so the whole transition is taken off, which
+   * for a navigation costs the reader nothing: the new page is simply
+   * already there.
+   */
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(space-scene),
+  ::view-transition-new(space-scene) {
+    animation: none;
+  }
+}

@@ -1,0 +1,116 @@
+/*
+ * The Operation screen has no layout of its own: the scene is full-bleed
+ * (`EarthSpaceViewport variant="hero"`, exactly as on Home) and everything
+ * else lives inside it or inside the details drawer. What's left here is
+ * the handful of things placed directly on the scene.
+ */
+
+/* Loading / not-found, centred on the scene in the hero's own explanatory
+   type role rather than as a bare line on the page background. */
+.notice {
+  position: absolute;
+  left: 50%;
+  top: clamp(48px, 14%, 140px);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(560px, 88vw);
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-hero-sub);
+  color: var(--color-text-dim);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+/*
+ * ТЗ §1.1 — where the hero block was. Same anchor as `.notice`, so the
+ * screen's headline never moves when the operation starts: the title and
+ * join call leave, the countdown arrives in the same place.
+ */
+.banner {
+  position: absolute;
+  left: 50%;
+  top: clamp(40px, 11%, 120px);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(560px, 88vw);
+  /* ТЗ §10 — the verdict, and under it the Result HUD. A column rather than
+     a row: the summary is a footnote to the headline above it, not a
+     sibling standing next to it. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* ТЗ §2 — the timer must never intercept a click meant for a sector.
+     The grid runs under the whole banner, so the whole banner is inert. */
+  pointer-events: none;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* The defender count above the list — the section's headline number. */
+.count {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+/*
+ * ТЗ §14.3-14.5 — every defender's attempt after the reveal. A row per
+ * attempt with the verdict in the middle column, so HIT/MISS lines up down
+ * the list and the winner is findable without reading each line.
+ */
+.results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.result {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--space-3);
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.resultWho {
+  color: var(--color-text);
+}
+
+.resultWhen {
+  grid-column: 1 / -1;
+  color: var(--color-text-dim);
+  font-size: 0.62rem;
+}
+
+.hit {
+  color: color-mix(in srgb, var(--color-success) 72%, #e6fff4);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.miss {
+  color: var(--color-text-dim);
+  letter-spacing: 0.08em;
+}
+
+.outranked {
+  color: color-mix(in srgb, var(--color-warning) 72%, #fff6e8);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+

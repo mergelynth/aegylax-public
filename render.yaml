@@ -1,0 +1,122 @@
+# Render blueprint for the AEGYLAX backend.
+#
+# One service, three jobs: the faucet the browser cannot be, the keeper that
+# finishes rounds nobody has a tab open for, and the indexer that folds the
+# event log into what each wallet has done. The frontend stays on Vercel and
+# talks to this over CORS — see CORS_ORIGINS below.
+#
+# Everything marked `sync: false` is a secret or an environment-specific
+# value and is set in the Render dashboard, never in this file.
+services:
+  - type: web
+    name: aegylax-backend
+    runtime: node
+    plan: starter
+    # A free instance sleeps after about fifteen idle minutes, and a
+    # sleeping keeper is the thing this service exists to prevent — rounds
+    # sit unrevealed until the next visitor wakes it, and the visitor pays
+    # the cold start (measured: 47s) before the page shows anything.
+    #
+    # An external pinger on a short enough interval does hold a free
+    # instance open, and that is a real option rather than a hack. Two
+    # things to know before relying on it. The interval has to beat the
+    # idle timeout with room to spare — a 5-minute schedule that silently
+    # skips two runs is a spin-down. And free instance hours are metered
+    # per account, so a service held open around the clock spends roughly
+    # a full month of them by itself: check the quota before adding a
+    # second free service beside it.
+    #
+    # `plan: starter` buys the absence of all of that.
+    buildCommand: npm ci && npm run api:build
+    startCommand: npm run api
+    healthCheckPath: /health
+    # `/health` is the platform's check. A pinger's is `/health/ping`, which
+    # touches nothing and exists only so that a request arrives — see
+    # .github/workflows/keepalive.yml. Point external uptime monitors at it
+    # too, not at `/health`: it is cheaper, it cannot make a wedged indexer
+    # look like a dead server, and the `keepalive.pings` counter in `/health`
+    # then tells you whether the pings are landing at all. A pinger aimed
+    # anywhere else leaves that counter at zero, and "zero" and "not
+    # configured" look identical.
+    envVars:
+      # 22, not 20. The keeper reaches into the ESM chain tooling through a
+      # runtime dynamic import, and newer Node is also where `require(esm)`
+      # stops being a trap if that indirection is ever removed.
+      - key: NODE_VERSION
+        value: "22"
+
+      # --- what chain this serves -------------------------------------
+      - key: CHAIN_ID
+        value: "84532"
+      - key: RPC_URL
+        sync: false
+
+      # --- who may call it from a browser -----------------------------
+      # Comma-separated, no trailing slashes. Local dev origins are always
+      # allowed and do not need listing.
+      - key: CORS_ORIGINS
+        value: https://demo-aegylax.vercel.app
+      # Optional: allows this Vercel project's preview deployments, which
+      # get a different hostname every time. Matches only this project.
+      - key: CORS_VERCEL_PROJECT
+        value: demo-aegylax
+
+      # --- faucet -----------------------------------------------------
+      # A wallet that holds test ETH and nothing else. It must NOT be the
+      # contract owner: this process signs unattended, and an owner key
+      # here turns a server compromise into a protocol takeover.
+      - key: FAUCET_EVM_PRIVATE_KEY
+        sync: false
+      # Etherscan-v2 key, used to read the faucet's own transaction history
+      # for the one-drip-per-day cooldown.
+      - key: EXPLORER_API_KEY
+        sync: false
+      - key: FAUCET_COOLDOWN_HOURS
+        value: "24"
+      # What one drip pays out, in ETH. Big enough to cover the most
+      # expensive thing a newcomer does — creating an operation, which costs
+      # startPrizePool + protocolJoinFee — not just taking a seat. The
+      # backend reads the contract at startup and says so in the log if this
+      # has fallen below either.
+      - key: FAUCET_DRIP_ETH
+        value: "0.02"
+
+      # --- keeper -----------------------------------------------------
+      # Separate from the faucet key so a drained faucet does not stop the
+      # keeper, and so neither is the owner.
+      - key: KEEPER_PRIVATE_KEY
+        sync: false
+      # The keeper schedules itself from the chain's own deadlines — an
+      # operation's registration block, an attack's impact block, the next
+      # epoch boundary — so these two are only bounds, not a cadence.
+      # The cap for when nothing is on the clock:
+      - key: KEEPER_SWEEP_SECONDS
+        value: "30"
+      # And how soon to come back when work was due and did not go through:
+      - key: KEEPER_RETRY_SECONDS
+        value: "5"
+      # How long one pass may wait for the covalidator quorum to notice the
+      # unlock. This is what makes unlock and reveal one pass instead of
+      # two; bounded so a quorum that is down cannot hold the sweep open.
+      - key: KEEPER_ATTEST_SECONDS
+        value: "12"
+      # Whether the keeper also reveals and scores finished rounds. Needs
+      # the confidential client, which is why it belongs on a server.
+      - key: KEEPER_REVEAL
+        value: "true"
+
+      # --- player records ---------------------------------------------
+      # The indexer folds the protocol's event log into what each wallet
+      # has done, in memory, rebuilt on every boot. It holds no key and
+      # sends nothing, so there is no secret here — only how hard it reads.
+      # The window is sized for a public RPC's eth_getLogs cap; raise it on
+      # a paid endpoint and the first backfill takes proportionally fewer
+      # requests.
+      - key: INDEXER_POLL_SECONDS
+        value: "20"
+      - key: INDEXER_LOG_WINDOW
+        value: "9000"
+      # Nothing this close to the head is folded in: a reorg would leave a
+      # permanent lie in a counter nothing ever recomputes.
+      - key: INDEXER_CONFIRMATIONS
+        value: "5"

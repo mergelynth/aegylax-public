@@ -1,0 +1,31 @@
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel-alt);
+  border: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-label);
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
+}
+
+.value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}

@@ -1,0 +1,1272 @@
+/*
+ * Command Rail — the bottom panel (ТЗ v3.1).
+ *
+ * §0 — one surface, one *fixed* height, and every state living inside slots
+ * that were reserved before the state arrived. The chassis never grows,
+ * never reflows and never jumps: what changes is light, and light is how
+ * this panel says anything at all (§3, §7).
+ *
+ * The hierarchy left to right is POOL → RECON → INTERCEPT (§2): what is at
+ * stake, what you can learn about the trajectory, and the one verb that
+ * commits a shot at it.
+ */
+
+.dock {
+  /* §1 — the fixed parameters. Nothing below is allowed to change them. */
+  --rail-h: 72px;
+  --rail-r: 32px;
+  --rail-pad: 20px;
+  --rail-gap: 14px;
+
+  --cta-w: 11.5rem;
+  --cta-h: 44px;
+  --module-h: 40px;
+  --recon-w: 10.5rem;
+
+  /* §3 — two surfaces, both near-black, one a shade above the other. */
+  --rail-shell: #030709;
+  --rail-top: #0b1218;
+  --rail-bottom: #0f1720;
+  --rail-line: #1b2a33;
+  --rail-dim: #6a7b83;
+
+  /* How far the curved ends eat into the row. Set from the measured
+     silhouette; 0 when the rail is drawn as a plain capsule. */
+  --rail-arc: 0px;
+
+  position: fixed;
+  z-index: 15;
+  inset-inline: 0;
+  /* §0 — the rail is built into the bottom of Earth, so it is at the very
+     bottom: no float, no gap, the lower edge is the edge of the screen. */
+  bottom: 0;
+  box-sizing: border-box;
+  height: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow: visible;
+  /* The dock spans the viewport so the rail can be placed anywhere along
+     it; only the rail itself takes the pointer. */
+  pointer-events: none;
+}
+
+/*
+ * The capsule, or the planet's lower limb.
+ *
+ * `left` / `width` / `clip-path` arrive from the measurement in
+ * `useEarthSilhouette` when Earth is wide enough to hold the row. The
+ * declarations here are the fallback the spec asks for — a symmetric 32px
+ * capsule, centred, at the width the viewport can give — and they are what
+ * a phone, a short window and a server render all get.
+ */
+.rail {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: min(1040px, calc(100% - 2 * clamp(12px, 4vw, 40px)));
+  height: var(--rail-h);
+  pointer-events: auto;
+  container-type: inline-size;
+  overflow: hidden;
+  color: var(--color-text);
+  border: none;
+  border-radius: var(--rail-r);
+  /* §1 — #0B1218 → #0F1720, top to bottom. Flat, no bevel, no metal (§3). */
+  background: linear-gradient(180deg, var(--rail-top) 0%, var(--rail-bottom) 100%);
+  box-shadow:
+    /* §3 — depth is an inner shadow plus a light layer at the bottom. */
+    inset 0 1px 0 color-mix(in srgb, var(--color-accent) 13%, transparent),
+    inset 0 -22px 30px -26px var(--rail-shell),
+    inset 0 18px 26px -24px #00000099,
+    0 20px 44px -20px #000000e0;
+}
+
+.well {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.wellWash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 12% 0%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 62%),
+    radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 60%);
+}
+
+/*
+ * §3 — the bottom light layer. Deliberately shallow: the rail's two ends
+ * taper to a few pixels of height, and a heavy bottom shade turned exactly
+ * those pixels black, so the panel looked like it stopped short of the limb
+ * it is in fact flush with.
+ */
+.wellShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 58%, #0000002b 100%);
+}
+
+/*
+ * §3 — the inner of the two surfaces. Inset by a hair and one step lighter,
+ * so the shell reads as a housing around it rather than as a single flat
+ * card. The bottom light layer lives on this one, which is what stops the
+ * capsule looking like a hole cut in the page.
+ */
+.wellInner {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #ffffff07, transparent 34%, color-mix(in srgb, var(--color-accent) 5%, transparent));
+}
+
+/*
+ * Measured: `left` is absolute, so the centring translate must not apply —
+ * and neither must the capsule's radius.
+ *
+ * `border-radius` and `clip-path` both clip, and the browser applies both:
+ * a 32px radius over an Earth-cut silhouette shaves the two bottom corners
+ * off the very place the shape was measured to reach, so the rail pulled
+ * away from the limb it was supposed to be flush with. The path is the
+ * shape here, in full, corners included.
+ */
+.dock[data-shape='earth'] .rail {
+  transform: none;
+  max-width: none;
+  border-radius: 0;
+}
+
+/* ---------------------------------------------------------------- §5 --- */
+
+.trace {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+/* §1 — segmented perimeter, 1px. The panel's resting outline. */
+.tracePath {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-accent) 34%, transparent);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 11;
+  opacity: 0.26;
+}
+
+.dock[data-hover='true'] .tracePath {
+  animation: rail-sweep 0.7s ease-out 1;
+}
+
+.rimGlow {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-accent-alt) 70%, #fff);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10 14;
+  opacity: 0.18;
+}
+
+/*
+ * §5 Perimeter Ambient — one arc of light walks the capsule once, then the
+ * rail is still for the rest of the cycle. Eight seconds is inside the
+ * 6-10s the spec asks for and, more to the point, is long enough that the
+ * movement is noticed rather than watched.
+ */
+.traceAmbient {
+  fill: none;
+  stroke: var(--color-accent-alt);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 120 3600;
+  opacity: 0;
+  animation: rail-ambient 8s linear infinite;
+}
+
+/* §5 State Change Pulse — 400ms, the whole perimeter, on every state move. */
+.tracePulse {
+  fill: none;
+  stroke: var(--color-accent-alt);
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: rail-pulse 0.4s ease-out forwards;
+}
+
+/* ---------------------------------------------------------------------- */
+
+/*
+ * The failure, dead centre of the panel and above everything on it.
+ *
+ * The middle of the row is the slack between POOL and RECON — the one
+ * place a message can land without covering a reading or a verb — so this
+ * is not merely where it looks tidy, it is where it costs nothing.
+ *
+ * Nothing here has an edge, and that is the whole point. Every control on
+ * this rail is a 1px contour around a 12px radius, so a message drawn that
+ * way is a button that cannot be pressed: the reader's next move after
+ * "Failed to fetch" is to press something, and a dead lookalike aims them
+ * at the wrong thing. What is left is light — a bloom that falls off to
+ * nothing, a rule that fades at both ends, a status dot — which is the
+ * panel's own language for state (ТЗ §3) rather than for objects.
+ *
+ * Inert, so the retry lands on the button underneath.
+ */
+.alertLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.alert {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  max-width: calc(100% - 2 * (var(--rail-pad) + var(--rail-arc) + 6px));
+  margin: 0;
+  /*
+   * The padding is the distance the bloom fades out over, and the 50%
+   * vertical radius makes it reach zero exactly at the box edge. A wash
+   * still carrying colour at its edge gets clipped square, and a rectangle
+   * over the row is the chassis this whole treatment exists to avoid.
+   */
+  padding: 15px 42px 16px;
+  background: radial-gradient(
+    62% 50% at 50% 50%,
+    color-mix(in srgb, var(--color-danger) 26%, transparent),
+    transparent 82%
+  );
+  color: var(--color-danger-pale);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  min-width: 0;
+  text-shadow:
+    0 1px 10px #000000e6,
+    0 0 22px color-mix(in srgb, var(--color-danger) 42%, transparent);
+}
+
+.alertText {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The rule: a signal under the words, not a border around them. It hangs
+   off the text so it tracks the sentence rather than the fade zone. */
+.alertText::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -7px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-danger) 72%, transparent),
+    transparent
+  );
+}
+
+.body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--rail-gap);
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding: 0 calc(var(--rail-pad) + var(--rail-arc));
+  overflow: hidden;
+}
+
+.data {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--rail-gap);
+  min-width: 0;
+  height: 100%;
+  /* Visible on purpose: `.body` clips to the capsule, and a second clip
+     here would cut the modules' own glow off in mid-air. */
+  overflow: visible;
+}
+
+/*
+ * The readouts under a message stay lit.
+ *
+ * They used to be faded out, and then cleared entirely, because RECON sat
+ * at the centre of the row and its diamond printed inside the first word.
+ * RECON has since moved against INTERCEPT, which leaves the middle of the
+ * row empty — the message lands in a gap, nothing is behind it, and hiding
+ * the pool to make room for a sentence turned out to read as a bug.
+ */
+/*
+ * The slack in the row, and the reason RECON can open to the right (§4.2)
+ * without POOL or INTERCEPT moving a pixel (§7). Everything to the
+ * left of it packs left, everything to the right stays where it is, and the
+ * module that grows eats this gap instead of its neighbours.
+ */
+.spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.meta {
+  display: block;
+  flex: 0 0 auto;
+  /* §4.1 — 7-9px, secondary. */
+  font-size: 0.52rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  line-height: 1;
+  white-space: nowrap;
+  /* "Reward + Fee" is the widest this ever gets. It fits at every rail
+     width the panel supports, but the label is data now, not a constant —
+     so it degrades to an ellipsis rather than out of the window. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------- §4.1 --- */
+
+/*
+ * The pool: an instrument window, and deliberately a third visual language.
+ *
+ * The rail now has three kinds of thing on it and they must not be
+ * confusable. A control is a closed 1px contour around a 12px radius. A
+ * message has no edge at all, only light. This is neither: a recessed pane
+ * with one chamfered corner, a rule down its leading edge, and a slow sweep
+ * of light across the glass. Nothing about it invites a press, and nothing
+ * about it reads as an alert.
+ */
+.pot {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  height: var(--cta-h);
+  box-sizing: border-box;
+  padding: 0 14px 0 13px;
+  border: none;
+  /* Not the buttons' 12px. The corner is cut rather than rounded — the one
+     shape on the panel that could not be a button. */
+  border-radius: 3px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+  background:
+    linear-gradient(180deg, #0d161df2 0%, #070e13f2 100%),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--color-accent) 5%, transparent) 0 1px,
+      transparent 1px 3px
+    );
+  overflow: hidden;
+}
+
+/* The leading rule — brightest at the reading, gone at the corners. */
+.potRule {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--color-accent) 32%,
+    var(--color-accent) 68%,
+    transparent
+  );
+  opacity: 0.85;
+}
+
+/* One pass of light over the glass. Placed by Motion; shaped here. */
+.potSweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 46%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 16%, transparent),
+    transparent
+  );
+}
+
+.potValue {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.1em;
+  isolation: isolate;
+  font-family: var(--font-mono);
+  /* §4.1 — 18-22px. */
+  font-size: 1.22rem;
+  font-weight: 560;
+  letter-spacing: -0.05em;
+  color: var(--color-accent-alt);
+  line-height: 1;
+  white-space: nowrap;
+  transition: filter 0.3s ease;
+}
+
+.pot[data-pulse='on'] .potValue,
+.potValue[data-pulse='on'] {
+  filter: brightness(1.18);
+}
+
+.potPulse {
+  position: absolute;
+  inset: -8px -12px;
+  border-radius: 10px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 40% 50%,
+    color-mix(in srgb, var(--color-accent) 28%, transparent),
+    transparent 68%
+  );
+  z-index: -1;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.ticker {
+  flex: 0 0 auto;
+  font-size: 0.6em;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  color: inherit;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- §4.2 --- */
+
+/*
+ * The slot, reserved at the module's *widest* state — the cooldown line.
+ *
+ * ТЗ §4.2 has RECON growing to the right and §7 has every state living in a
+ * fixed slot, and both are only true at once if the room the widest state
+ * needs is standing there from the start. Otherwise a probe going out
+ * pushes INTERCEPT out of its slot, which is the one thing §7 forbids.
+ */
+.reconWrap {
+  flex: 0 0 var(--recon-w);
+  height: var(--module-h);
+  display: flex;
+  align-items: center;
+  /* Anchored against INTERCEPT: the slot's spare width is on the left, so
+     that is the side the module opens into. */
+  justify-content: flex-end;
+  min-width: 0;
+  transition:
+    opacity 0.2s ease,
+    visibility 0s;
+}
+
+/*
+ * §4.2 — a module, not a button. At rest it is a diamond and two digits in
+ * a thin housing; the verb is folded away to zero width and unrolls to the
+ * right on hover, on a scan, and on a cooldown.
+ */
+.recon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--module-h);
+  padding: 0 12px;
+  border: 1px solid var(--rail-line);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #ffffff08, transparent 60%), #0c141b;
+  --seat-shadow: inset 0 1px 0 #ffffff0d;
+  box-shadow: var(--seat-shadow);
+  color: var(--color-accent);
+  cursor: pointer;
+  overflow: hidden;
+  appearance: none;
+  font: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/* §5 Interaction Perimeter — the contour belongs to the element being used. */
+.recon:hover:not(:disabled),
+.recon:focus-visible,
+.recon[data-open='true']:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--rail-line));
+  box-shadow:
+    inset 0 1px 0 #ffffff12,
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent),
+    0 0 14px -4px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.reconDiamond {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.reconCount {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-alt);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/*
+ * The fold. `grid-template-columns: 0fr → 1fr` is the one way to animate a
+ * width the content decides — the verb is never measured, laid out or
+ * truncated to a guessed number of pixels, and the module is exactly as
+ * wide as the words it currently has.
+ */
+.reconVerbSlot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.recon:hover:not(:disabled) .reconVerbSlot,
+.recon:focus-visible .reconVerbSlot,
+.recon[data-open='true'] .reconVerbSlot {
+  grid-template-columns: 1fr;
+}
+
+.reconVerb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.56rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-alt);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.recon:hover:not(:disabled) .reconVerb,
+.recon:focus-visible .reconVerb,
+.recon[data-open='true'] .reconVerb {
+  opacity: 1;
+}
+
+.reconScan {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.reconScan::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent-alt) 45%, transparent),
+    transparent
+  );
+  animation: recon-scan 0.9s ease-in-out infinite;
+}
+
+/*
+ * The wave — "this is the one to press".
+ *
+ * A rail with two live controls has a real problem: at a glance nothing
+ * distinguishes the button that is waiting for a click from the one that is
+ * merely on screen. A contour cannot say it (every module has one) and a
+ * colour cannot (the accent is already the panel's whole palette). Movement
+ * can, and it is the only thing here that moves.
+ *
+ * A ring leaving the control's own outline and fading outwards, once every
+ * two and a half seconds.
+ *
+ * It animates the control's own `box-shadow` rather than a pseudo-element's,
+ * and that is forced: both controls clip their contents (`overflow: hidden`
+ * carries the scan and the busy sweep), so a ring drawn on a child would be
+ * clipped away at exactly the edge it is meant to leave. The resting layer
+ * is held in `--seat-shadow` so the keyframes carry it forward instead of a
+ * second copy drifting from the original.
+ *
+ * It stops the moment the control stops being pressable — a wave on a dead
+ * control is worse than none — and the moment a pointer arrives, since by
+ * then the invitation has landed.
+ */
+.recon[data-live='true']:not(:disabled),
+.cta[data-kind='ready']:not(:disabled),
+.cta[data-kind='reveal']:not(:disabled),
+.cta[data-kind='claim']:not(:disabled) {
+  animation: press-wave 2.5s ease-out infinite;
+}
+
+.recon:hover,
+.recon:focus-visible,
+.cta:hover,
+.cta:focus-visible {
+  animation: none;
+}
+
+/*
+ * §4.2 COOLDOWN — the line takes the module over, so the count steps aside.
+ * On the narrowest rail this reverses; see the 430px container query.
+ */
+.recon[data-cooldown='true'] .reconDiamond,
+.recon[data-cooldown='true'] .reconCount {
+  display: none;
+}
+
+.recon:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.recon[data-scanning='true'] {
+  border-color: color-mix(in srgb, var(--color-accent-alt) 70%, var(--rail-line));
+}
+
+/* §4.2 SUCCESS — a 200ms cyan flash over the module as the count springs up. */
+.recon[data-flash='true'] {
+  animation: recon-flash 0.2s ease-out 1;
+}
+
+/* ------------------------------------------------------- §4.4 / §4.5 --- */
+
+.ctaWrap {
+  position: relative;
+  flex: 0 0 var(--cta-w);
+  width: var(--cta-w);
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  isolation: isolate;
+}
+
+.cta {
+  position: relative;
+  appearance: none;
+  flex: 0 0 var(--cta-w);
+  width: var(--cta-w);
+  min-width: var(--cta-w);
+  max-width: var(--cta-w);
+  height: var(--cta-h);
+  min-height: var(--cta-h);
+  max-height: var(--cta-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--rail-line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #16202839 0%, #0b1218 55%, #080d12 100%);
+  color: var(--color-accent-alt);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 1;
+  --seat-shadow: inset 0 1px 0 #ffffff12;
+  box-shadow: var(--seat-shadow);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+/* §4.4 IDLE — an inactive surface with an inactive contour. */
+.cta[data-kind='idle'] {
+  border-color: var(--rail-line);
+  color: #7d8d95;
+}
+
+/* §4.4 READY / §4.5 AVAILABLE — the contour comes up and the edge lights. */
+.cta[data-kind='ready']:not(:disabled),
+.cta[data-kind='reveal']:not(:disabled),
+.cta[data-kind='claim']:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 62%, var(--rail-line));
+  --seat-shadow:
+    inset 0 1px 0 #ffffff1c,
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 12%, transparent),
+    0 0 18px -6px color-mix(in srgb, var(--color-accent) 60%, transparent);
+  box-shadow: var(--seat-shadow);
+}
+
+/* §4.4 HOVER — the perimeter runs, the glyph focuses. */
+.cta:hover:not(:disabled):not([data-quiet='true']) {
+  border-color: color-mix(in srgb, var(--color-accent-alt) 76%, var(--rail-line));
+  box-shadow:
+    inset 0 1px 0 #ffffff26,
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent),
+    0 0 24px -6px color-mix(in srgb, var(--color-accent) 72%, transparent);
+}
+
+.cta:hover:not(:disabled):not([data-quiet='true']) .ctaIcon {
+  transform: scale(1.08);
+}
+
+/* §4.4 PRESSED — the inner shadow inverts under the press. */
+.cta:active:not(:disabled):not([data-quiet='true']) {
+  box-shadow:
+    inset 0 2px 6px -1px #000000b8,
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.cta:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--color-accent-alt) 80%, transparent);
+  outline-offset: 2px;
+}
+
+.ctaIconWrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.ctaIcon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctaCopy {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: 0 1 auto;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ctaLabel {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9.2rem;
+}
+
+/* The trailing mark: tick, arrow, dots, cross. */
+.ctaMark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.ctaMarkIcon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/*
+ * Edge to edge, and sitting on the floor of the button.
+ *
+ * `bottom: 1px` is measured from the inside of the border, so the trail
+ * rides the seam rather than floating in the middle of the label. Full
+ * bleed left and right: `.cta` clips to its own 12px radius, so the dashes
+ * run off into the corners instead of stopping short of them.
+ *
+ * `width: 100%` is load-bearing. An SVG is a replaced element: `left: 0;
+ * right: 0` without an explicit width keeps the viewBox's intrinsic size
+ * (100×2 at a 2px height is 100px), which is about half the button — the
+ * trail that used to stop mid-way.
+ */
+.fireTrail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  width: 100%;
+  height: 2px;
+  display: block;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--color-accent-alt) 70%, transparent);
+}
+
+/*
+ * One dash period is 3.6 + 4.32 = 7.92, so a cycle of -7.92 loops
+ * seamlessly.
+ *
+ * Those are not round numbers because they are not free. `preserveAspectRatio
+ * ="none"` stretches user units with the element, so a pattern is only ever
+ * a size *relative to the span it crosses*. Widening the trail from 72% of
+ * the button to all of it would have made the same `5 6` render 39% longer.
+ * Scaled by that 0.72 instead, the dashes are the size they always were and
+ * only the line beneath them got longer.
+ */
+.fireTrailPath {
+  animation: fire-trail 0.65s linear infinite;
+}
+
+/* §4.4 FIRING — the contour sweeps while the transaction is out.
+ * Decoding / Revealing / Claiming wear the same wait: a trail across the
+ * floor of the button, and the border breathing with it. */
+.cta[data-kind='firing'],
+.cta[data-kind='reveal'][aria-busy='true'],
+.cta[data-kind='claim'][aria-busy='true'] {
+  cursor: default;
+  border-color: color-mix(in srgb, var(--color-accent-alt) 70%, var(--rail-line));
+  animation: cta-sweep 1.1s ease-in-out infinite;
+}
+
+/* §4.4 SHOT FIRED — held, brightened for a beat, waiting on the result. */
+.cta[data-kind='fired'] {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--rail-line));
+  color: color-mix(in srgb, var(--color-accent-alt) 70%, #8b9aa1);
+}
+
+/* §4.4 RESULT SUCCESS — the round was won. */
+.cta[data-kind='won'] {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--rail-line));
+  color: var(--color-accent-alt);
+  box-shadow:
+    inset 0 1px 0 #ffffff1c,
+    0 0 18px -7px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+/* §4.4 RESULT FAIL — the one red thing on the panel, and it is not pressable. */
+.cta[data-kind='lost'] {
+  border-color: color-mix(in srgb, var(--color-danger) 46%, var(--rail-line));
+  color: color-mix(in srgb, var(--color-danger) 78%, #ffd9dd);
+  background: linear-gradient(180deg, #1c1015 0%, #14090d 60%, #0d0709 100%);
+}
+
+/* §4.5 CLAIMED — the contour goes out. */
+.cta[data-quiet='true'],
+.cta[data-kind='claimed'] {
+  cursor: default;
+}
+
+.cta[data-kind='claimed'] {
+  border-color: var(--rail-line);
+  color: #6e7e86;
+}
+
+.cta:disabled {
+  cursor: default;
+}
+
+/* Three beats — the claim's progress, and the scan's. */
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dots span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: rail-dots 1.05s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+/* ---------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------- §6 --- */
+
+/* ---------------------------------------------------------------------- */
+/*
+ * §6-§7 — the row on a narrow rail.
+ *
+ * These are container queries, not media queries, and the difference
+ * matters: the rail is as wide as *Earth*, which is 46vw, so a 1024px
+ * window gives it barely 400px to work in while a 1600px one gives it 660.
+ * The viewport cannot answer "is there room for NEXT RECON · 2 BLOCKS";
+ * the rail can. Each step spends the least load-bearing thing left: the
+ * gaps, then the type, then — on a phone — the recon line itself.
+ */
+
+@container (max-width: 720px) {
+  .body {
+    --rail-gap: 10px;
+    --rail-pad: 14px;
+  }
+
+  .pot {
+    padding: 0 13px 0 12px;
+  }
+}
+
+@container (max-width: 620px) {
+  .body {
+    --rail-gap: 8px;
+    --rail-pad: 12px;
+    --cta-w: 10.2rem;
+    --recon-w: 9.1rem;
+  }
+
+  .pot {
+    padding: 0 12px 0 11px;
+  }
+
+  .potValue {
+    font-size: 1.08rem;
+  }
+
+  .recon {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .reconVerb {
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  .ctaLabel {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@container (max-width: 500px) {
+  /*
+   * On a rail this narrow there is no middle to put a message in: the row
+   * is a pool, a recon module and a button, edge to edge, and a centred
+   * sentence lands on top of the module. RECON stands down for the seconds
+   * a failure is up — it is the one of the three that is neither the figure
+   * at stake nor the control that retries.
+   */
+  .dock[data-alert='true'] .reconWrap {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
+
+  .body {
+    --rail-gap: 6px;
+    --rail-pad: 10px;
+    --cta-w: 9rem;
+    --recon-w: 8.4rem;
+  }
+
+  /*
+   * The label is data now, and the longest of them — "Entry + pool refund",
+   * for a creator who also defended a round that never ran — is wider than
+   * a phone's share of the row. The window sizes to its content, so without
+   * a cap it pushes the button off the rail instead of truncating. Capped
+   * here and nowhere wider: every other label fits whole, and the full
+   * sentence is on hover regardless.
+   */
+  /*
+   * A pixel cap on the window, not a `ch` cap on the label.
+   *
+   * `ch` measures the "0" glyph and knows nothing about the 0.16em of
+   * letter-spacing this label is tracked out with, so a count that looked
+   * generous truncated a word early. The row's arithmetic is in pixels
+   * anyway: 350 usable on a 390px phone, less the recon module, the button
+   * and the gaps, leaves this. Every label but the longest — "Entry + pool
+   * refund", a creator who also defended a round that never ran — fits
+   * inside it whole, and that one ellipses with the full sentence on hover.
+   */
+  .pot {
+    max-width: 135px;
+  }
+
+  .potValue {
+    font-size: 1rem;
+  }
+
+  .reconVerb {
+    font-size: 0.46rem;
+  }
+
+  .ctaLabel {
+    font-size: 0.54rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+/*
+ * A phone, where §6 asks for the RECON module at its most compact.
+ */
+@container (max-width: 430px) {
+  .body {
+    --rail-gap: 6px;
+    --rail-pad: 8px;
+    --recon-w: 4.3rem;
+    --cta-w: 8.4rem;
+  }
+
+  /*
+   * §6 — RECON at its most compact: the diamond and the count, in every
+   * state. There is no width here for NEXT RECON · 2 BLOCKS beside a pool
+   * and the primary button, and a line clipped mid-word is worse than the
+   * dimmed, unpressable module that says the same thing. The reason stays
+   * on the control's `title`, and the scan still sweeps across it.
+   */
+  .reconVerbSlot {
+    display: none;
+  }
+
+  .recon[data-cooldown='true'] .reconDiamond,
+  .recon[data-cooldown='true'] .reconCount {
+    display: block;
+  }
+
+  .pot {
+    padding: 0 10px 0 9px;
+  }
+
+  .potValue {
+    font-size: 0.9rem;
+  }
+
+  .cta {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .ctaLabel {
+    font-size: 0.54rem;
+    letter-spacing: 0.05em;
+  }
+}
+
+@media (max-width: 720px), (hover: none) and (pointer: coarse) {
+  /*
+   * §6 — the only thing the breakpoint decides is *height*. How wide each
+   * module may be is a question about the rail, not about the window, and
+   * the container queries above answer it: on a phone the rail is a capsule
+   * as wide as the screen, on a laptop it is a 460-670px slice of Earth,
+   * and those two can be the same number.
+   */
+  .dock {
+    --rail-h: 64px;
+    --cta-h: 40px;
+    --module-h: 36px;
+  }
+
+  .rail {
+    width: calc(100% - 20px);
+  }
+
+  /* Hover cannot open the module on a touch screen; only a real state can. */
+  .recon:hover:not(:disabled) .reconVerbSlot,
+  .recon:focus-visible .reconVerbSlot {
+    grid-template-columns: 0fr;
+  }
+
+  .recon[data-open='true'] .reconVerbSlot {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tracePath,
+  .tracePulse,
+  .traceAmbient,
+  .rimGlow,
+  .reconScan::after,
+  .fireTrailPath,
+  .recon[data-live='true']:not(:disabled),
+  .cta[data-kind='ready']:not(:disabled),
+  .cta[data-kind='reveal']:not(:disabled),
+  .cta[data-kind='claim']:not(:disabled),
+  .cta[data-kind='firing'],
+  .cta[data-kind='reveal'][aria-busy='true'],
+  .cta[data-kind='claim'][aria-busy='true'],
+  .reconVerbSlot,
+  .reconVerb,
+  .recon,
+  .cta,
+  .data,
+  .ctaIcon,
+  .potValue,
+  .dots span {
+    transition: none;
+    animation: none;
+  }
+}
+
+@keyframes rail-sweep {
+  from {
+    stroke-dashoffset: 0;
+    opacity: 0.22;
+  }
+  40% {
+    opacity: 0.7;
+  }
+  to {
+    stroke-dashoffset: -36;
+    opacity: 0.26;
+  }
+}
+
+@keyframes rail-ambient {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.42;
+  }
+  62% {
+    opacity: 0.42;
+  }
+  72% {
+    stroke-dashoffset: -3720;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: -3720;
+    opacity: 0;
+  }
+}
+
+@keyframes rail-pulse {
+  from {
+    stroke-dashoffset: 48;
+    opacity: 0.85;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes recon-scan {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 110%;
+  }
+}
+
+@keyframes recon-flash {
+  from {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-accent-alt) 85%, transparent),
+      0 0 20px -4px color-mix(in srgb, var(--color-accent) 85%, transparent);
+  }
+  to {
+    box-shadow: inset 0 1px 0 #ffffff0d;
+  }
+}
+
+@keyframes cta-sweep {
+  0%,
+  100% {
+    border-color: color-mix(in srgb, var(--color-accent-alt) 45%, var(--rail-line));
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--color-accent-alt) 90%, var(--rail-line));
+  }
+}
+
+@keyframes fire-trail {
+  from {
+    stroke-dashoffset: 0;
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: -7.92;
+    opacity: 0.55;
+  }
+}
+
+@keyframes press-wave {
+  0% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 0 color-mix(in srgb, var(--color-accent) 40%, transparent);
+  }
+  64%,
+  100% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 8px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+@keyframes rail-dots {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 1;
+  }
+}

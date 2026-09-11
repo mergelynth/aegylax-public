@@ -1,0 +1,473 @@
+/*
+ * The hero title's two lives — see `CipherTitle.tsx` for which is which.
+ *
+ * Everything here paints; nothing here lays anything out except the two
+ * rules that hold a character's width still while it is unresolved.
+ */
+
+/*
+ * The heading itself, for one reason: the intercept pass draws a reticle,
+ * an interceptor and an impact ring around one of its characters, and those
+ * are absolutely positioned against this box. Nothing else here needs it,
+ * and it changes nothing about how the heading lays out.
+ */
+.host {
+  position: relative;
+}
+
+/*
+ * A word, kept whole. The characters inside are inline-blocks, which are
+ * break opportunities of their own — without this the heading would be free
+ * to wrap in the middle of COMING on a narrow viewport.
+ */
+.word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* One character's box, sized by the ghost and painted by the glyph. */
+.cell {
+  position: relative;
+  display: inline-block;
+}
+
+.ghost {
+  visibility: hidden;
+}
+
+/*
+ * The noise, centred on the character it is standing in for and taking no
+ * space of its own — so a cipher glyph flipping to a digit moves nothing,
+ * here or anywhere else on the line.
+ *
+ * `--scramble-ink` is the same escape hatch `ScrambleText` carries: a host
+ * that paints its text by clipping a gradient to it cannot clip to glyphs
+ * painted out of flow, and inherits `transparent` down here.
+ */
+.glyph {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--scramble-ink, currentColor);
+}
+
+/*
+ * A fabricated glyph, sized to the exact band the capitals occupy.
+ *
+ * `cap` is the unit the whole approach rests on: one `cap` is the cap
+ * height of the element's own font, whatever font the stack ended up
+ * resolving to on this machine. So the drawn form is the height of the
+ * letters beside it by construction, where every character-based noise this
+ * effect has used was the height of whatever font happened to own that
+ * codepoint. The `em` line above it is the fallback for browsers without
+ * the unit, at the cap height of a typical grotesque.
+ *
+ * `vertical-align: baseline` puts the bottom edge of an inline replaced box
+ * on the baseline, which is where a capital's foot is — so the form fills
+ * the band from baseline to cap line and nothing else needs positioning.
+ */
+.rune {
+  display: inline-block;
+  width: 0.44em;
+  height: 0.72em;
+  width: 0.6cap;
+  height: 1cap;
+  vertical-align: baseline;
+  overflow: visible;
+}
+
+/*
+ * Stroked rather than filled, at a weight that reads as the same hand as
+ * the heading: the viewBox is ten units tall against a cap height, so 1.7
+ * of it is about 0.12em of stem — a bold grotesque's own.
+ */
+.rune path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+/*
+ * The characters held back from the decode. They are the same claim the
+ * trajectory line makes further down the hero, so they are painted in the
+ * same accent rather than in the heading's own ink — this is sealed data,
+ * not a letter that has not arrived yet.
+ */
+.cipher {
+  color: var(--color-accent);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+/*
+ * The same glow, by the only mechanism that reaches a stroke: `text-shadow`
+ * paints around glyphs and leaves an SVG path untouched, so a sealed slot
+ * would have been the one accent on the line that was not lit.
+ */
+.cipher .rune {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-accent) 55%, transparent));
+}
+
+/* One flash as a character gives itself up, then it is ordinary text. */
+.solved {
+  animation: cipher-solved 420ms ease-out;
+}
+
+@keyframes cipher-solved {
+  from {
+    color: var(--color-accent-soft);
+    text-shadow:
+      0 4px 30px #000000cc,
+      0 0 12px var(--color-accent),
+      0 0 34px color-mix(in srgb, var(--color-accent) 50%, transparent);
+  }
+  to {
+    color: var(--color-text);
+    text-shadow: 0 4px 30px #000000cc;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * THE INTERCEPT PASS — the loop that runs for as long as the page is open
+ *
+ * Five beats on one character at a time (`motion/useInterceptPass`), and
+ * this file paints only what happens *inside* the letter. The reticle, the
+ * interceptor's run and the impact ring are drawn around it by
+ * `motion/InterceptOverlay`; the two halves share nothing but the phase
+ * name, so neither can move the other's pixels.
+ *
+ *   sweep   settled ink drifts to the red the map marks an estimated
+ *           position in — a letter going uncertain, not a letter breaking
+ *   lock    the character is *gone*: a sealed form churns in its place,
+ *           flickering and jittering, because a value under a lock is not
+ *           readable and an unstable reading is not a still one
+ *   strike  the seal holds steady and bright for a third of a second while
+ *           the interceptor crosses the line
+ *   burst   the real character back, white-hot out of the interception
+ *           green, torn into its red and cyan channels for two frames by
+ *           the hit and pulled back together
+ *   cool    the heat bleeding off over a second and a half, down to
+ *           ordinary ink with nothing left behind
+ *
+ * The two loud beats are under a second together and the quiet ones carry
+ * the rest. That ratio is the whole correction over the version before it,
+ * which held one letter blinking red for five and a half seconds: at that
+ * length a fault stops reading as a system working and starts reading as a
+ * dead pixel in the headline.
+ *
+ * Every keyframe that sets `text-shadow` carries the heading's own
+ * `0 4px 30px #000000cc` in its list — it is what lifts the title off the
+ * space scene behind it, and a keyframe that sets the property at all
+ * replaces it.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
+ * The character under the pass, for the whole pass.
+ *
+ * One box that never changes shape: `inline-block` so it can be
+ * transformed — the jitter and the impact recoil are transforms, and an
+ * inline box ignores them — and `position: relative` so the sealed form can
+ * be painted over it out of flow, exactly as the entrance decode does it.
+ *
+ * `inline-block` is also a line-break opportunity, which is why the pass
+ * renders the whole word this character is in inside a `.word` (see
+ * `CipherTitle.tsx`): without that, a heading sitting near its wrap point
+ * would break *inside a word* for the four seconds the pass lasts and snap
+ * back afterwards.
+ */
+.mark {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── sweep ── */
+
+/*
+ * The ramp is `SectorGrid`'s own: the shades a recon blotch paints an
+ * estimated position in, lifted toward white because this is type on a
+ * black sky rather than a mark on a pale globe.
+ */
+.sweep {
+  animation: intercept-sweep 900ms ease-out forwards;
+}
+
+@keyframes intercept-sweep {
+  from {
+    color: var(--color-text);
+    text-shadow: 0 4px 30px #000000cc, 0 0 0 rgb(211 88 109 / 0);
+  }
+  to {
+    color: rgb(236, 127, 145);
+    text-shadow: 0 4px 30px #000000cc, 0 0 20px rgb(211 88 109 / 0.5);
+  }
+}
+
+/* ── lock ── */
+
+/*
+ * A sealed value, and the only place in the product where the heading's own
+ * text is taken away for longer than a frame.
+ *
+ * `filter` rather than `text-shadow` for the glow, because half of what is
+ * being lit here is an SVG path: `text-shadow` paints around glyphs and
+ * leaves a stroke untouched, so a sealed slot showing a drawn form would be
+ * the one unlit thing on the line. `drop-shadow` follows both.
+ *
+ * Two clocks, and neither period divides the other, so the flicker and the
+ * jitter drift against each other instead of falling into a pattern the eye
+ * can learn in a second and a half. Stepped rather than eased: an
+ * interpolated flicker is breathing, and a headline that breathes looks
+ * like a fade that went wrong.
+ */
+.lock {
+  color: rgb(250, 158, 175);
+  filter: drop-shadow(0 0 12px rgb(211 88 109 / 0.6));
+  animation:
+    intercept-flicker 530ms steps(1, end) infinite,
+    intercept-jitter 290ms steps(1, end) infinite;
+}
+
+/*
+ * One dip per cycle, not three. The form under this is already being
+ * redrawn eight times a second, so a fast strobe on top of it is not more
+ * instability — it is a second effect fighting the first, and at a rate
+ * (WCAG 2.3.1) worth staying well clear of even on an area this small.
+ */
+@keyframes intercept-flicker {
+  0% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 0.42;
+  }
+  72% {
+    opacity: 1;
+  }
+}
+
+@keyframes intercept-jitter {
+  0% {
+    transform: translate(-0.014em, 0.006em);
+  }
+  33% {
+    transform: translate(0.016em, -0.008em);
+  }
+  66% {
+    transform: translate(0.004em, 0.01em);
+  }
+}
+
+/* ── strike ── */
+
+/*
+ * The third of a second the interceptor is in the air. The seal stops
+ * moving and goes bright — the reading is confirmed, and what happens next
+ * is not the character's doing.
+ */
+.strike {
+  color: rgb(255, 205, 214);
+  filter: drop-shadow(0 0 16px rgb(236 127 145 / 0.75));
+  animation: intercept-hold 300ms ease-out forwards;
+}
+
+@keyframes intercept-hold {
+  from {
+    opacity: 0.86;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── burst ── */
+
+/*
+ * Impact. The character is back, and it arrives out of the ink the map
+ * draws a defended point in with a white crest crossing it — full
+ * brightness on the first frame, then out, because a hit is read by how far
+ * its light reaches rather than by how long it lasts.
+ *
+ * The tear is the part that says *hit* rather than *glow*: for the first
+ * two frames the glyph is thrown into a red and a cyan copy of itself three
+ * pixels apart and pulled back together over the next tenth of a second.
+ * Both channels are shadows of the one glyph rather than duplicated
+ * elements — a second copy of the character would need a box of its own,
+ * and a box is a break opportunity in a heading that wraps.
+ *
+ * Every keyframe below carries the same five shadows in the same order so
+ * the list interpolates; the two channel copies simply arrive at zero
+ * offset and zero alpha.
+ */
+.burst {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    var(--color-success) 0%,
+    var(--color-success-pale) 38%,
+    #ffffff 52%,
+    var(--color-success-pale) 66%,
+    var(--color-success) 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation:
+    intercept-burst 420ms cubic-bezier(0.1, 0.9, 0.3, 1) forwards,
+    intercept-recoil 420ms cubic-bezier(0.22, 1.5, 0.36, 1) forwards;
+}
+
+@keyframes intercept-burst {
+  0% {
+    background-position: 100% 50%;
+    text-shadow:
+      0 4px 30px #000000cc,
+      -3px 0 0 rgb(255 95 110 / 0.85),
+      3px 0 0 rgb(67 230 224 / 0.85),
+      0 0 30px var(--color-success),
+      0 0 120px color-mix(in srgb, var(--color-success) 70%, transparent);
+  }
+  28% {
+    text-shadow:
+      0 4px 30px #000000cc,
+      -1px 0 0 rgb(255 95 110 / 0.4),
+      1px 0 0 rgb(67 230 224 / 0.4),
+      0 0 34px var(--color-success),
+      0 0 200px color-mix(in srgb, var(--color-success) 45%, transparent);
+  }
+  100% {
+    background-position: 0% 50%;
+    text-shadow:
+      0 4px 30px #000000cc,
+      0 0 0 rgb(255 95 110 / 0),
+      0 0 0 rgb(67 230 224 / 0),
+      0 0 26px color-mix(in srgb, var(--color-success) 60%, transparent),
+      0 0 80px color-mix(in srgb, var(--color-success) 30%, transparent);
+  }
+}
+
+/*
+ * The character taking the hit — a tenth of an em and no more. It is a
+ * transform, so it moves nothing around it, and it overshoots on the way
+ * back because a struck thing settles rather than stops.
+ */
+@keyframes intercept-recoil {
+  from {
+    transform: scale(1.13);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* ── cool ── */
+
+/*
+ * The character coming back to itself, painted in its own ink from the
+ * first frame. Everything that reads here is *outside* the glyph.
+ *
+ * There was a white shine travelling through the fill as well, and it is
+ * gone — it was the one part of this effect that looked like a rendering
+ * fault rather than an event. The reason is arithmetic: `--color-text` is
+ * #eaf3f5, so a white highlight crossing the letter is white on white and
+ * cannot be seen. Making it visible meant darkening the gradient on either
+ * side of the crest, and what that actually put on screen was a dim band
+ * sliding across a settled letter — a smudge, not a shine. A fill can only
+ * be swept convincingly when there is somewhere darker to sweep *from*, and
+ * at the top of this palette there is not.
+ *
+ * So the beat is carried entirely by light escaping the glyph into the
+ * black behind it: a halo that peaks and dies, and an edge that steps down
+ * to nothing. Both end exactly where the heading's resting paint is — the
+ * glow at the heading's own drop shadow, the stroke fully transparent — so
+ * the class comes off a character that is already painted the way it will
+ * inherit.
+ *
+ * The outline is a plain stroke rather than a gradient filling one, for the
+ * same reason the tear above is a shadow: the textbook way to fill a stroke
+ * is a second copy of the character, and a second copy needs a box.
+ */
+.cool {
+  color: var(--color-text);
+  animation:
+    intercept-cool-glow 1400ms ease-out forwards,
+    intercept-cool-edge 1400ms steps(1, end) forwards;
+}
+
+/*
+ * The halo, still green as the burst hands over, white at its widest, then
+ * nothing. It reaches as far as the burst did — the two are one event, and
+ * a correction that arrives loud and returns invisible is half a gesture.
+ */
+@keyframes intercept-cool-glow {
+  0% {
+    text-shadow:
+      0 4px 30px #000000cc,
+      0 0 24px color-mix(in srgb, var(--color-success) 55%, transparent),
+      0 0 70px color-mix(in srgb, var(--color-success) 30%, transparent);
+  }
+  40% {
+    text-shadow:
+      0 4px 30px #000000cc,
+      0 0 26px rgb(255 255 255 / 0.75),
+      0 0 82px rgb(255 255 255 / 0.42);
+  }
+  100% {
+    text-shadow:
+      0 4px 30px #000000cc,
+      0 0 0 rgb(255 255 255 / 0),
+      0 0 0 rgb(255 255 255 / 0);
+  }
+}
+
+/*
+ * `steps(1, end)`, because `-webkit-text-stroke-color` is not interpolated
+ * everywhere it is supported. Four stops that each stand on their own are a
+ * fade that cannot come apart into a pop at the end.
+ */
+@keyframes intercept-cool-edge {
+  0% {
+    -webkit-text-stroke: 1px rgb(255 255 255 / 0.85);
+  }
+  45% {
+    -webkit-text-stroke: 1px rgb(255 255 255 / 0.5);
+  }
+  80% {
+    -webkit-text-stroke: 1px rgb(255 255 255 / 0.2);
+  }
+  100% {
+    -webkit-text-stroke: 1px transparent;
+  }
+}
+
+/*
+ * The JavaScript half already asks — both hooks bail on
+ * `prefers-reduced-motion` and the title renders as plain text, so nothing
+ * above can normally be reached. It is here because these are the only
+ * rules in the product that would keep a character moving indefinitely, and
+ * an indefinite animation is the one kind worth stopping twice.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .solved,
+  .sweep,
+  .lock,
+  .strike,
+  .burst,
+  .cool {
+    animation: none;
+  }
+
+  .sweep,
+  .lock,
+  .strike,
+  .burst,
+  .cool {
+    background-image: none;
+    color: var(--color-text);
+    filter: none;
+    transform: none;
+    -webkit-text-stroke: 0;
+  }
+}

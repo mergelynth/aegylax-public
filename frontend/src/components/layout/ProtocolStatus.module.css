@@ -1,0 +1,549 @@
+/*
+ * The trigger is both the hover target and the positioning context for the
+ * panel — there is no separate wrapper, so `left: 0` on the panel lines up
+ * with the ring's left edge and the arrow can point at its centre.
+ */
+.trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  /* The ring itself is the status light (there is no separate dot) — its
+     color is set by the level classes below. The `border` is the static
+     fallback; the live ring is painted by `::before` on top of it, so the
+     32px box stays the same whether or not the gradient renders. */
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel-alt);
+  cursor: default;
+  outline: none;
+  transition: background 0.15s ease;
+  /* Ring palette + cadence, overridden per level below. */
+  --ring-c1: var(--color-border);
+  --ring-c2: var(--color-border);
+  --ring-c3: var(--color-border-strong);
+  --ring-c4: var(--color-border);
+  --ring-c5: var(--color-border);
+  --ring-speed: 8s;
+}
+
+/*
+ * The animated status ring: a travelling highlight on a darker base,
+ * masked down to the 1.5px border band. Speed still separates the three
+ * states: calm at 8s when operational, twice as urgent when degraded,
+ * four times when offline.
+ *
+ * **Why a glint rather than an even hue walk.** The previous ring walked
+ * five closely-spaced shades around the whole circumference so the join
+ * would not band. On yellow and red the luminance range was wide enough
+ * that the walk still read as motion; on green the five steps sat inside
+ * one mid-tone and an 8s rotation of a 32px ring looked like a static
+ * circle. The eye tracks a highlight, not a hue. Most of the ring is now
+ * the base (c1); a short arc ramps through c2–c5 and back, so the same
+ * transform is a moving light rather than a muddy blend.
+ *
+ * **Why the sweep is a rotation rather than a background pan, and why that
+ * is not a detail.** This ring is on screen on every page, in every state,
+ * for as long as the tab is open — it is the one animation in the app that
+ * never stops. The version it replaces animated `background-position` across
+ * a nine-stop `repeating-linear-gradient` that was itself behind a two-layer
+ * `mask` with `mask-composite: exclude`. `background-position` is not a
+ * compositable property, so every single frame re-rasterized the gradient and
+ * re-ran the mask composite — sixty times a second, permanently, on a page
+ * that is otherwise idle. A 32px element is small, but a small element
+ * repainted forever is still a core kept warm for nothing, and it was one of
+ * the two reasons the Home page span the fan.
+ *
+ * A `conic-gradient` rotated by `transform` produces the travelling light
+ * on the same band and costs nothing per frame: the layer is rasterized
+ * once and the compositor turns it. The mask survives the change for free
+ * because the thing being masked is a circle — a ring is invariant under
+ * rotation, so spinning the element spins only the colours inside it.
+ */
+.trigger::before {
+  content: '';
+  position: absolute;
+  /* -1px reaches the outer edge of the 1px border box. */
+  inset: -1px;
+  border-radius: 50%;
+  padding: 1.5px;
+  background: conic-gradient(
+    from 0deg,
+    var(--ring-c1) 0%,
+    var(--ring-c1) 58%,
+    var(--ring-c2) 68%,
+    var(--ring-c4) 76%,
+    var(--ring-c5) 82%,
+    var(--ring-c3) 90%,
+    var(--ring-c1) 100%
+  );
+  /* Punch out the middle so only the border band is painted. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  will-change: transform;
+  animation: ringFlow var(--ring-speed) linear infinite;
+}
+
+@keyframes ringFlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  background: var(--color-bg-panel);
+}
+
+/*
+ * The shield beside the wordmark — AEGYLAX's mark, and the one strong
+ * accent in the lockup (ТЗ §8).
+ *
+ * Full strength, deliberately, and it is the exception to the muting the
+ * rest of the small chrome got: the wordmark next to it is neutral now, so
+ * this is the only thing carrying the brand's colour. It is also 16px, and
+ * a 16px mark at a muted step reads as grey rather than as quiet.
+ */
+.icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+  transition: color 0.15s ease;
+}
+
+.trigger:hover .icon,
+.trigger:focus-visible .icon {
+  color: var(--color-text);
+}
+
+/* Level colors: on the trigger they drive the animated ring (and the static
+   border under it), on the header dot inside the panel they fill it. */
+/*
+ * c1 is the resting ring; c5 is the glint. Each level's five stops are one
+ * token walked from dark to near-white — the ring is a *sweep*, and what
+ * makes a sweep visible is that spread, not the hue.
+ *
+ * They used to be five literals per level, chosen by eye against the old
+ * palette. Deriving them means the shield stays legible in any theme and,
+ * more to the point, that the health ring and everything else the provider
+ * paints stay one instrument rather than two that happen to agree today
+ * (ТЗ §9, §16).
+ */
+.operational {
+  border-color: var(--color-success);
+  --ring-c1: color-mix(in srgb, var(--color-success) 62%, #04231a);
+  --ring-c2: color-mix(in srgb, var(--color-success) 88%, #04231a);
+  --ring-c3: color-mix(in srgb, var(--color-success) 86%, #ffffff);
+  --ring-c4: color-mix(in srgb, var(--color-success) 58%, #ffffff);
+  --ring-c5: color-mix(in srgb, var(--color-success) 12%, #ffffff);
+  --ring-speed: 8s;
+}
+
+.degraded {
+  border-color: var(--color-warning);
+  --ring-c1: color-mix(in srgb, var(--color-warning) 68%, #2a1503);
+  --ring-c2: color-mix(in srgb, var(--color-warning) 92%, #2a1503);
+  --ring-c3: color-mix(in srgb, var(--color-warning) 88%, #ffffff);
+  --ring-c4: color-mix(in srgb, var(--color-warning) 62%, #ffffff);
+  --ring-c5: color-mix(in srgb, var(--color-warning) 34%, #ffffff);
+  /* Twice the pace of operational. */
+  --ring-speed: 4s;
+}
+
+/*
+ * A halo around the shield while the tab is degraded or offline — distinct
+ * from the ring sweep, which is always moving. Twice the previous amplitude
+ * so yellow and red read as a warning, not only a hue change; still slow
+ * enough that a long stall does not strobe.
+ */
+.trigger.degraded::after,
+.trigger.offline::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  animation: statusPulse 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+.trigger.degraded::after {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-warning) 84%, transparent),
+    0 0 10px color-mix(in srgb, var(--color-warning) 55%, transparent);
+}
+
+.trigger.offline::after {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-danger) 84%, transparent),
+    0 0 10px color-mix(in srgb, var(--color-danger) 55%, transparent);
+}
+
+@keyframes statusPulse {
+  0% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.66);
+  }
+}
+
+.offline {
+  border-color: var(--color-danger);
+  --ring-c1: color-mix(in srgb, var(--color-danger) 72%, #2a0409);
+  --ring-c2: color-mix(in srgb, var(--color-danger) 94%, #2a0409);
+  --ring-c3: color-mix(in srgb, var(--color-danger) 90%, #ffffff);
+  --ring-c4: color-mix(in srgb, var(--color-danger) 66%, #ffffff);
+  --ring-c5: color-mix(in srgb, var(--color-danger) 40%, #ffffff);
+  /* Four times the pace of operational. */
+  --ring-speed: 2s;
+}
+
+.operational.headerDot {
+  background: var(--color-success);
+}
+
+.degraded.headerDot {
+  background: var(--color-warning);
+}
+
+.offline.headerDot {
+  background: var(--color-danger);
+}
+
+/*
+ * Revealed on hover/focus only — the same model as the Global Defense
+ * Status tooltips, with no click-to-pin state that could outlive the
+ * pointer.
+ *
+ * **Why the hidden state is `visibility` rather than `pointer-events: none`.**
+ * The panel has links in it now, and reaching a link means travelling across
+ * the panel with the pointer — so the one thing it must not do is close the
+ * instant the cursor wobbles off a hoverable surface. The closing transition
+ * is therefore *delayed*: for `--popover-grace` after the pointer leaves, the
+ * panel is still fully painted and still a hover target, so moving back into
+ * it simply cancels the close. That only works if the element stays
+ * interactive during the delay, which rules out `pointer-events: none`
+ * (an element that is not a hover target cannot re-trigger `:hover` on
+ * itself). `visibility` is discrete and transitionable, so it can be held at
+ * `visible` for exactly the grace period and then flipped — and once hidden it
+ * blocks pointer events completely, which is the property the old
+ * `pointer-events: none` was there for.
+ *
+ * Opening has no delay: a panel that hesitates before appearing reads as lag.
+ */
+.popover {
+  --popover-grace: 420ms;
+
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  width: 280px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 20px 50px -20px #000000e6;
+  /* 90%-opaque panel colour: a blur behind it is invisible and still costs
+     a backdrop snapshot per frame. See `.body` in LobbySidePanel. */
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /*
+   * Deliberately *not* `overflow-y: auto` here, and it was briefly wrong.
+   *
+   * Both the invisible hover bridge and the arrow live above this box
+   * (`bottom: 100%`), so an overflow context on the panel itself clips them
+   * both away — which removed the bridge across the 12px gap and made the
+   * panel un-hover the moment the cursor left the ring. The scroll container
+   * is `.popoverBody` instead, below the header and inside the clip-free
+   * panel.
+   */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.15s ease var(--popover-grace),
+    transform 0.15s ease var(--popover-grace),
+    visibility 0s linear calc(var(--popover-grace) + 0.15s);
+}
+
+/* Invisible bridge across the 12px gap: without it the panel un-hovers the
+   moment the cursor leaves the ring, before it can reach the panel. */
+.popover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 12px;
+}
+
+/*
+ * The scrolling part. The panel is tall enough to reach the bottom of a short
+ * viewport, and it scrolls itself rather than the page — this is a hover
+ * panel, and a page that scrolls under the pointer takes the panel out from
+ * under it. `overscroll-behavior` stops a flick at the end of the list from
+ * continuing into the page for the same reason.
+ */
+.popoverBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100vh - 140px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Arrow tying the panel back to the ring — 16px is the centre of the 32px
+   trigger, which the panel's left edge is aligned to. */
+.popover::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--color-border-strong);
+}
+
+/* :focus-visible, never :focus/:focus-within — a mouse click must not latch
+   the panel open once the pointer leaves, which is exactly how the Global
+   Defense Status tooltips behave. Keyboard focus still opens it. */
+.trigger:hover .popover,
+.trigger:focus-visible .popover,
+.popover:hover,
+/* Keyboard: tabbing to a link inside the panel must not close it under the
+   focus that just arrived. */
+.popover:focus-within {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  /* Open immediately; only the close is graced. */
+  transition-delay: 0s;
+}
+
+.popoverHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: var(--space-2);
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.headerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.headerLabel {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.74rem;
+}
+
+.rowMain {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rowLabel {
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rowValue {
+  color: var(--color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rowWarn {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+}
+
+.rowWarn .rowLabel,
+.rowWarn .rowValue,
+.rowHint {
+  color: var(--color-warning);
+}
+
+.rowHint {
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+}
+
+/*
+ * Outbound values in this panel (explorer addresses, the confidential
+ * network's site). No underline — a slight cyan-blue on the text is
+ * enough to mark them as links without a second status colour.
+ *
+ * The cool accent rather than the primary one, and this is the only place
+ * it is spent: the panel's rows are already carrying status colour, and
+ * marking links in the same hue as the taglines and the CTA would make a
+ * fourth meaning for that colour on a screen that has three.
+ */
+.rowValue a {
+  color: color-mix(in srgb, var(--color-text) 68%, var(--color-accent-cool) 32%);
+  text-decoration: none;
+  border-bottom: none;
+  transition: color 140ms ease;
+}
+
+.rowValue a:hover,
+.rowValue a:focus-visible {
+  color: color-mix(in srgb, var(--color-text) 40%, var(--color-accent-cool) 60%);
+  border-bottom: none;
+}
+
+/* A warned row already paints the value yellow; do not recolour the link. */
+.rowWarn .rowValue a,
+.rowWarn .rowValue a:hover,
+.rowWarn .rowValue a:focus-visible {
+  color: inherit;
+  border-bottom: none;
+}
+
+/* The economics rows, set apart from the connection rows above them by a
+   rule rather than by extra space — the panel is dense and a gap alone
+   reads as an accident. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--space-2);
+  margin-top: 2px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* The panel now carries three blocks rather than two, and a rule alone stops
+   being enough to say which is which once there is more than one of them. */
+.groupTitle {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  opacity: 0.75;
+}
+
+/* Build version + source link, below the terms. The rule is on this
+   wrapper so version and GitHub share one divider rather than sitting
+   as another terms row. */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+/*
+ * The standing disclosure. Dim and small: it is a fact the panel is obliged
+ * to carry, not a warning about anything that just happened, and painting it
+ * in the warning colour would put it in the same lane as a degraded RPC.
+ */
+.disclosure {
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-dim);
+  text-align: left;
+  white-space: normal;
+}
+
+/* Full-width footer action, so it reads as the panel's one link rather than
+   as another label/value row. */
+/*
+ * The two handles, on one row. Each is a mark followed by its own text, so
+ * the gap between the links has to beat the 7px inside them — otherwise the
+ * second mark sits as close to the first handle as to its own, and the row
+ * reads as four things rather than two.
+ */
+.links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-top: 2px;
+}
+
+.repoLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-text-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.repoLink:hover,
+.repoLink:focus-visible {
+  color: var(--color-text);
+}
+
+.repoIcon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  .popover {
+    width: min(280px, 82vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    transition: none;
+  }
+  /* The gradient stays — only the movement stops. */
+  .trigger::before,
+  .trigger.degraded::after,
+  .trigger.offline::after {
+    animation: none;
+  }
+}

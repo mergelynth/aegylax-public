@@ -1,0 +1,68 @@
+/*
+ * The guided tour's own frame.
+ *
+ * Almost nothing: the tour is the product with an overlay on it, so the
+ * only styling here is for the moments when the product is not on screen
+ * yet — while the sandbox chain is being seeded, or if it could not be.
+ */
+
+.stage {
+  min-height: 100vh;
+}
+
+/*
+ * The sheet that makes the product inert — see the note at its call site.
+ *
+ * Just under the tour's own layer (200) and above everything the app can
+ * raise: the modal overlay is 100, the command rail 15, the header 10.
+ */
+.shield {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 100vh;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.statusTitle {
+  margin: 0;
+  font-size: var(--text-panel);
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--color-text);
+}
+
+.statusBody {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+}
+
+.statusExit {
+  margin-top: var(--space-3);
+  padding: 9px 18px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel-alt);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.statusExit:hover {
+  border-color: var(--color-accent-muted);
+}

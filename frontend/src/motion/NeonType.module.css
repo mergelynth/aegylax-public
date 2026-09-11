@@ -1,0 +1,62 @@
+/*
+ * One letter striking and cooling.
+ *
+ * Left `inline` rather than `inline-block` on purpose: nothing here needs a
+ * block box — `opacity` and `text-shadow` both apply to inline boxes — and
+ * making each letter its own block would take the word out of normal text
+ * layout for no gain.
+ *
+ * `backwards` is what holds a letter invisible through its delay. Without
+ * it every letter would be on screen from the first frame and the whole
+ * effect would be seven glows firing in sequence over an already-complete
+ * word.
+ */
+.letter {
+  animation-name: neon-strike;
+  animation-timing-function: var(--boot-ease, ease-out);
+  animation-fill-mode: backwards;
+}
+
+/*
+ * Arrive lit, hold for a moment, cool over the remainder.
+ *
+ * The glow is three shadows at increasing radius — a tight core, a bloom
+ * and a wide halo — which is what separates neon from a blur. They decay
+ * together to nothing, so the letter ends in exactly its resting state and
+ * the animation can be dropped at the end with no visible step.
+ *
+ * The radii are twice what they were: 8, 28 and 60 against a 1.3rem cap.
+ * At the original size the halo barely cleared the glyph and the effect
+ * read as a soft edge rather than as light coming off the letter; at this
+ * size the bloom spills past the wordmark and the letters genuinely light
+ * their own corner of the header. The alphas are untouched — doubling
+ * those as well would have made it a lamp rather than a bigger glow.
+ *
+ * The colour is the theme's accent, so a re-themed build ignites in its own
+ * colour rather than in a cyan hard-coded here.
+ */
+@keyframes neon-strike {
+  0% {
+    opacity: 0;
+    text-shadow:
+      0 0 8px color-mix(in srgb, var(--color-accent-alt, #7ef2ec) 90%, transparent),
+      0 0 28px color-mix(in srgb, var(--color-accent, #43e6e0) 75%, transparent),
+      0 0 60px color-mix(in srgb, var(--color-accent, #43e6e0) 55%, transparent);
+  }
+  /* Struck: fully present and at full glow. Everything after this is the
+     letter cooling, which is the half-second the eye actually reads. */
+  16% {
+    opacity: 1;
+    text-shadow:
+      0 0 8px color-mix(in srgb, var(--color-accent-alt, #7ef2ec) 90%, transparent),
+      0 0 28px color-mix(in srgb, var(--color-accent, #43e6e0) 75%, transparent),
+      0 0 60px color-mix(in srgb, var(--color-accent, #43e6e0) 55%, transparent);
+  }
+  100% {
+    opacity: 1;
+    text-shadow:
+      0 0 8px transparent,
+      0 0 28px transparent,
+      0 0 60px transparent;
+  }
+}

@@ -1,0 +1,113 @@
+/*
+ * The playfield is the whole scene, always. The details drawer floats over
+ * it rather than taking a slice out of it, so opening or closing the
+ * drawer never re-lays the grid, never moves Earth, and never shifts a
+ * sector out from under the pointer.
+ */
+.arena {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * ТЗ §9.7 — an in-flight attack is felt, never located. This is a vignette
+ * on the scene's edges with no direction and no position in it: it says
+ * "something is inbound" and carries exactly zero information about where,
+ * which is the only thing the UI is allowed to say at this point.
+ */
+.alert {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, color-mix(in srgb, var(--color-danger) 12%, transparent) 100%);
+  animation: alert-breathe 1.9s ease-in-out infinite;
+}
+
+/*
+ * ТЗ §4.2 — the standing red neon border on the working area's frame, up
+ * for as long as something is in flight. Weak on purpose: it is a condition
+ * the screen is in, not an event, and it has to survive being looked at for
+ * a whole epoch.
+ */
+.frame {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+  box-shadow:
+    inset 0 0 18px color-mix(in srgb, var(--color-danger) 15%, transparent),
+    0 0 10px color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
+/*
+ * ТЗ §4.1 — and the flash that announced it: one bright pass over the same
+ * frame at the instant the countdown hits zero. Mounted with a changing key
+ * so it plays exactly once per launch and then leaves nothing behind.
+ */
+.flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border: 2px solid var(--color-danger);
+  box-shadow:
+    inset 0 0 60px color-mix(in srgb, var(--color-danger) 50%, transparent),
+    0 0 40px color-mix(in srgb, var(--color-danger) 80%, transparent);
+  animation: frame-flash 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes frame-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.35;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes alert-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert {
+    animation: none;
+    opacity: 0.85;
+  }
+
+  /*
+   * The launch still has to be announced — it is the moment the game
+   * starts — so the flash keeps its brightness and only loses its motion,
+   * fading out in one pass instead of pulsing.
+   */
+  .flash {
+    animation: frame-flash-still 0.85s linear forwards;
+  }
+}
+
+@keyframes frame-flash-still {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

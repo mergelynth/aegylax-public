@@ -1,0 +1,3374 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "fallback",
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "MAX_SCORE_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "buyProbes",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "count",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "cancelLobby",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimRefund",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimReward",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "collectProbe",
+    "inputs": [
+      {
+        "name": "hintHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "completeAttack",
+    "inputs": [
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createLobby",
+    "inputs": [
+      {
+        "name": "config",
+        "type": "tuple",
+        "internalType": "struct GameTypes.LobbyConfig",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "entryPrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "registrationDeadline",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "registrationDeadlineBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "startPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "creatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "expireAttack",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "finalizeScoring",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundEngine",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getLens",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "owner_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "engine_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "params_",
+        "type": "tuple",
+        "internalType": "struct GameTypes.GameParams",
+        "components": [
+          {
+            "name": "gridColumns",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "gridRows",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sectorSpanKm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "interceptRadiusMilliSectors",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "epochBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defenseSpeedKmPerBlock",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "probeConeMicroRad",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "revealGraceBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxProbesPerPlayer",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "freeProbes",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxCreatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "minRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "minStartPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probePrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "protocolJoinFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      },
+      {
+        "name": "genesisBlock_",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "joinLobby",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "leaveLobby",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "openGlobalDefense",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "paused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "proveDefenses",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "indices",
+        "type": "uint32[]",
+        "internalType": "uint32[]"
+      },
+      {
+        "name": "proofs",
+        "type": "tuple[]",
+        "internalType": "struct GameTypes.DecryptionProof[]",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "proxiableUUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "resolveLobby",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "defenseProofs",
+        "type": "tuple[]",
+        "internalType": "struct GameTypes.DecryptionProof[]",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revealAndResolve",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "bearingProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      },
+      {
+        "name": "deltaProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      },
+      {
+        "name": "maskProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      },
+      {
+        "name": "defenseProofs",
+        "type": "tuple[]",
+        "internalType": "struct GameTypes.DecryptionProof[]",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revealEpochAttack",
+    "inputs": [
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "bearingProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      },
+      {
+        "name": "deltaProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      },
+      {
+        "name": "maskProof",
+        "type": "tuple",
+        "internalType": "struct GameTypes.DecryptionProof",
+        "components": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signatures",
+            "type": "bytes[]",
+            "internalType": "bytes[]"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sendProbe",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sensorColumn",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "sensorRow",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "hintHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setEngine",
+    "inputs": [
+      {
+        "name": "engine_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setGlobalDefenseInterval",
+    "inputs": [
+      {
+        "name": "epochs",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setLens",
+    "inputs": [
+      {
+        "name": "lens_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setParams",
+    "inputs": [
+      {
+        "name": "params_",
+        "type": "tuple",
+        "internalType": "struct GameTypes.GameParams",
+        "components": [
+          {
+            "name": "gridColumns",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "gridRows",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sectorSpanKm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "interceptRadiusMilliSectors",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "epochBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defenseSpeedKmPerBlock",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "probeConeMicroRad",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "revealGraceBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxProbesPerPlayer",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "freeProbes",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxCreatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "minRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "minStartPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probePrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "protocolJoinFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setPaused",
+    "inputs": [
+      {
+        "name": "paused_",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settleCreator",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "startOperation",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "submitDefense",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "ciphertext",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "attemptIndex",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unlockDefenses",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "unlockRound",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeToAndCall",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "version",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "withdrawProtocolFees",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address payable"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "AttackCompleted",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "completedAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AttackExpired",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AttackRevealed",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "revealedBy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "trajectory",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct GameTypes.Trajectory",
+        "components": [
+          {
+            "name": "startX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "startY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "impactAngleMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "launchBearingMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "lengthWu",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "speedWuPerBlock",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "revealedAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AttackStarted",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "launchBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "impactBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "flightBlocks",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ConfidentialEngineUpdated",
+    "inputs": [
+      {
+        "name": "engine",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "kind",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CreatorSettled",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefensePoolFunded",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "poolBalance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefenseSubmitted",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attemptIndex",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "pointHandle",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "maskedHandle",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "submittedAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GlobalDefenseIntervalUpdated",
+    "inputs": [
+      {
+        "name": "epochs",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GlobalDefenseOpened",
+    "inputs": [
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      },
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "pool",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LensUpdated",
+    "inputs": [
+      {
+        "name": "lens",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LobbyCancelled",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LobbyCreated",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "entryPrice",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "startPrizePool",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "registrationDeadline",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "paramsVersion",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OperationStarted",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "startedAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ParamsUpdated",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerJoined",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "paid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "participantCount",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerLeft",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "refunded",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "participantCount",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProbeHintGranted",
+    "inputs": [
+      {
+        "name": "hintHandle",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "grantedAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProbeSent",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "probeIndex",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "hintHandle",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "readableAtBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProbesPurchased",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "count",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "paid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolFeesWithdrawn",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RefundClaimed",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardClaimed",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WinnerDetermined",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "intercepted",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "winners",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      },
+      {
+        "name": "rewardPerWinner",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "winningArrivalBlockScaled",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadyClaimed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyJoined",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyRevealed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AttackNotLanded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DefenseAlreadySubmitted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DefenseLockedByProbe",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DefenseWindowClosed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidImplementation",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967NonPayable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EnforcedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EngineNotSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExpectedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "IncorrectPayment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidDecryptionProof",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LobbyFull",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MinPlayersNotReached",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoProbesLeft",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotCreator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotParticipant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NothingToClaim",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProbeAlreadyGranted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProbeInFlight",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProbeLimitReached",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProbeNotReadable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProofCountMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RegistrationClosed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RegistrationStillOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RevealNotUnlocked",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ScoringBatchTooLarge",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SensorOffBoard",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnauthorizedCallContext",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnsupportedProxiableUUID",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnknownAttack",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownLobby",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownProbe",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownSelector",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongAttackStatus",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongLobbyStatus",
+    "inputs": []
+  },
+  {
+    "type": "function",
+    "name": "currentEpoch",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "genesisBlock",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAttack",
+    "inputs": [
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "attack",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Attack",
+        "components": [
+          {
+            "name": "id",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "epochId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "launchBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "impactBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "flightBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum GameTypes.AttackStatus"
+          },
+          {
+            "name": "bearingHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deltaHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "decryptionUnlocked",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "intercepted",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "maskKeyHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      },
+      {
+        "name": "derivedStatus",
+        "type": "uint8",
+        "internalType": "enum GameTypes.AttackStatus"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDefenseAttempts",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct GameTypes.DefenseAttempt[]",
+        "components": [
+          {
+            "name": "participant",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pointHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "submittedAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "submittedAtTimestamp",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "revealed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "x",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "y",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "arrivalBlockScaled",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "intercepted",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "interceptionBlockScaled",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "interceptX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "interceptY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "missDistanceWu",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isWinner",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "maskedHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getEngine",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getEpochAttack",
+    "inputs": [
+      {
+        "name": "epochId",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attack",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Attack",
+        "components": [
+          {
+            "name": "id",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "epochId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "launchBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "impactBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "flightBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum GameTypes.AttackStatus"
+          },
+          {
+            "name": "bearingHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deltaHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "decryptionUnlocked",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "intercepted",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "maskKeyHandle",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      },
+      {
+        "name": "derivedStatus",
+        "type": "uint8",
+        "internalType": "enum GameTypes.AttackStatus"
+      },
+      {
+        "name": "revealed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "trajectory",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Trajectory",
+        "components": [
+          {
+            "name": "startX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "startY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "impactAngleMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "launchBearingMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "lengthWu",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "speedWuPerBlock",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getGlobalDefenseDraw",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "nextEpoch",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "interval",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "pool",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getGlobalDefensePool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getLobby",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "lobby",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Lobby",
+        "components": [
+          {
+            "name": "id",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "createdAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "createdAtTimestamp",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum GameTypes.LobbyStatus"
+          },
+          {
+            "name": "paramsVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "participantCount",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "startedAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "epochId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "attackId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "attemptCount",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "entryFeesCollected",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probeFeesCollected",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "creatorFeeAccrued",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "protocolFeeAccrued",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "rewardPool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "rewardsClaimed",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "creatorSettled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "ending",
+            "type": "uint8",
+            "internalType": "enum GameTypes.Ending"
+          },
+          {
+            "name": "validActions",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      },
+      {
+        "name": "config",
+        "type": "tuple",
+        "internalType": "struct GameTypes.LobbyConfig",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "entryPrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "registrationDeadline",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "registrationDeadlineBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "startPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "creatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      },
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct GameTypes.GameParams",
+        "components": [
+          {
+            "name": "gridColumns",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "gridRows",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sectorSpanKm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "interceptRadiusMilliSectors",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "epochBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defenseSpeedKmPerBlock",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "probeConeMicroRad",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "revealGraceBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxProbesPerPlayer",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "freeProbes",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxCreatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "minRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "minStartPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probePrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "protocolJoinFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getLobbyIds",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "limit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "page",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "total",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getMaskKey",
+    "inputs": [
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "published",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "handle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getOutcome",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "revealed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "outcome",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Outcome",
+        "components": [
+          {
+            "name": "intercepted",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "interceptX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "interceptY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "interceptionBlockScaled",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "winningArrivalBlockScaled",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "interceptRadiusWu",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "winners",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "rewardPerWinner",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "resolvedAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "resolvedAtTimestamp",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "revealedBy",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct GameTypes.GameParams",
+        "components": [
+          {
+            "name": "gridColumns",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "gridRows",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sectorSpanKm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "interceptRadiusMilliSectors",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "epochBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defenseSpeedKmPerBlock",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "probeConeMicroRad",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "revealGraceBlocks",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxPlayers",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxProbesPerPlayer",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "freeProbes",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxCreatorFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "minRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxRegistrationSeconds",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "minEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxEntryFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "minStartPrizePool",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probePrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "protocolJoinFee",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      },
+      {
+        "name": "paramsVersion",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getParticipant",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "who",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Participant",
+        "components": [
+          {
+            "name": "joined",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "joinedAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "probesUsed",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "probesPurchased",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "defenseIndex",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "claimed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "refunded",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "paidIn",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "probesPaid",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "lastProbeBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getParticipants",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPrizePool",
+    "inputs": [
+      {
+        "name": "lobbyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "startPrizePool",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "entryFeesCollected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "probeFeesCollected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "creatorFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "protocolFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rewardPool",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getProbeFlight",
+    "inputs": [
+      {
+        "name": "hintHandle",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct GameTypes.ProbeFlight",
+        "components": [
+          {
+            "name": "player",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "sentBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "readableAtBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "granted",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getStats",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "totalLobbies",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "activeLobbies",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "totalAttacks",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "interceptedAttacks",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "missedAttacks",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "epoch",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "protocolTreasury",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTrajectory",
+    "inputs": [
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "revealed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "trajectory",
+        "type": "tuple",
+        "internalType": "struct GameTypes.Trajectory",
+        "components": [
+          {
+            "name": "startX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "startY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetX",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "targetY",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "impactAngleMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "launchBearingMicroRad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "lengthWu",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "speedWuPerBlock",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTreasury",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "withdrawable",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "contractBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "joinFee",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRevealed",
+    "inputs": [
+      {
+        "name": "attackId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfig",
+    "inputs": [
+      {
+        "name": "field",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidParams",
+    "inputs": [
+      {
+        "name": "field",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnknownAttempt",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MaskKeyNotPublished",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ScoringAlreadyFinal",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ScoringIncomplete",
+    "inputs": []
+  }
+]

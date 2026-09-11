@@ -1,0 +1,587 @@
+/*
+ * Shared shell for both wallet states (spec §3): a compact glass pill,
+ * visually secondary to the primary "Create Defense" CTA — no large
+ * gradient, no strong glow, just a subtle blue/purple-tinted glass
+ * surface. Both ConnectWalletButton (disconnected) and WalletStatus
+ * (connected) render this same class so there is only ever one wallet
+ * control on screen, never two.
+ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-cool) 24%, transparent);
+  background: color-mix(in srgb, var(--color-bg-panel-alt) 90%, transparent);
+  /*
+   * No `backdrop-filter`, same reason as the header it sits in — and here
+   * it was buying least of all: the pill rides inside a bar that is itself
+   * near-opaque, so the blur was working on what little got through two
+   * layers, once per step of a planet it cannot even see.
+   */
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+button.pill:hover {
+  background: color-mix(in srgb, var(--color-bg-panel-alt) 87%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+button.pill:active {
+  transform: translateY(1px);
+}
+
+/*
+ * Sign-in while the provider is still restoring a session, or while its
+ * modal is opening. The press is genuinely unavailable rather than ignored,
+ * and it says so — the state it replaces was a live-looking button that
+ * swallowed the click.
+ */
+button.pill:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+button.pill:disabled:hover {
+  background: color-mix(in srgb, var(--color-bg-panel-alt) 72%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent-cool) 24%, transparent);
+}
+
+/*
+ * Why sign-in did not happen — a notice hanging off the control that was
+ * pressed, in the same chrome as the account panel. Absolute so a message
+ * cannot shove the header's other chrome around.
+ */
+.signInError {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(280px, calc(100vw - 32px));
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 34%, transparent);
+  background: color-mix(in srgb, var(--color-bg-panel) 94%, #1c0e12);
+  box-shadow: 0 18px 44px -18px #000000cc;
+  font-size: 0.78rem;
+  font-weight: 550;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--color-text);
+  transform-origin: calc(100% - 22px) top;
+  animation: wallet-panel-open 190ms var(--boot-ease, cubic-bezier(0.16, 0.84, 0.3, 1)) backwards;
+}
+
+.signInError::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 22px;
+  border: 6px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--color-danger) 34%, transparent);
+}
+
+.signInErrorMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-danger) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 50%, transparent);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-danger);
+}
+
+.connected {
+  padding: 0 8px 0 16px;
+  cursor: default;
+}
+
+/*
+ * The pill anchors the account panel, so it needs a positioning context of
+ * its own — the header slot it sits in is shared with other chrome.
+ */
+.walletRoot {
+  position: relative;
+  display: inline-flex;
+  z-index: 40;
+}
+
+/*
+ * The identity is a button now: it is the only route to the deposit address,
+ * and on a managed wallet the address exists nowhere else in the app. It
+ * stays visually flat so the pill still reads as one control rather than
+ * three.
+ */
+.identityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.identityButton:hover,
+.identityButton:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--color-accent-cool) 15%, transparent);
+}
+
+/*
+ * The account panel, opening *from the pill* rather than appearing under it.
+ *
+ * The origin is the stalk — the little arrow at `right: 58px` that joins the
+ * two — so the panel grows out of the exact point it is attached to and the
+ * control and the thing it revealed read as one object rather than as a card
+ * that happened to arrive nearby. Uniform scale, never `scaleY`: a panel
+ * stretched vertically is a panel full of stretched type.
+ *
+ * A stylesheet animation rather than Motion's, because there is nothing to
+ * orchestrate here — one element, one entrance, no exit (the panel is
+ * dismissed by a click that is usually a navigation, and holding it on
+ * screen to fade it out would be the dropdown outliving the page it was on).
+ */
+.panel {
+  transform-origin: calc(100% - 58px) top;
+  animation: wallet-panel-open 190ms var(--boot-ease, cubic-bezier(0.16, 0.84, 0.3, 1)) backwards;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: min(330px, calc(100vw - 32px));
+  padding: var(--space-4);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-cool) 30%, transparent);
+  background: color-mix(in srgb, var(--color-bg-panel) 95%, transparent);
+  /* 86% effective alpha: a blur behind it is invisible and still costs a
+     backdrop snapshot per frame. See `.body` in LobbySidePanel. */
+  box-shadow: 0 24px 60px -20px #000000cc;
+  white-space: normal;
+}
+
+/*
+ * The stalk joining the panel to the pill it opened from — the same arrow
+ * the header's status popover has, in this panel's own border colour.
+ *
+ * Without it the panel is a card that happens to be under the header; with
+ * it, the static control and the thing it revealed read as one object.
+ *
+ * Offset from the right rather than centred, because the panel is
+ * right-aligned to a pill at the end of the header row: 58px clears the
+ * disconnect button (28px, plus 8px of pill padding and the 9px gap) and
+ * lands the arrow on the identity button, which is the control that opened
+ * it. Pointing at the middle of a 330px card would point at nothing.
+ */
+@keyframes wallet-panel-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .signInError,
+  .lowBalanceIcon,
+  .faucetUrgent {
+    animation: none;
+  }
+}
+
+.panel::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 58px;
+  border: 6px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--color-accent-cool) 30%, transparent);
+}
+
+.panelLabel {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+  overflow-wrap: anywhere;
+}
+
+.panelHeading {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+/*
+ * Monospace, wrapping mid-string, selectable. An address is read character
+ * by character when somebody checks it against what they pasted, and a
+ * proportional font makes that check unreliable.
+ */
+.addressFull {
+  margin: 0;
+  width: 100%;
+  padding: var(--space-2);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-bg-panel) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent-cool) 18%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/*
+ * Copy and the top-up, sharing a line.
+ *
+ * Equal flex rather than natural widths, and that is what makes the row
+ * hold still: the labels on both buttons change under the pointer ("Copy
+ * address" to "Copied") and under the cooldown ("Get test ETH" to a clock),
+ * and content-sized buttons would resize and shove each other sideways
+ * every time. Splitting the line in two fixed halves means every one of
+ * those states lands in a box that was already the right size.
+ *
+ * It wraps, because the panel is 330px at its widest and narrower than that
+ * on a phone — at which point two buttons on one line stop being a pairing
+ * and start being two cramped buttons.
+ */
+.panelActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.panelActions > * {
+  flex: 1 1 130px;
+  justify-content: center;
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent-cool) 15%, transparent);
+  color: var(--color-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.copyButton:hover,
+.copyButton:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--color-accent-cool) 27%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 67%, transparent);
+}
+
+.copyIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.panelNote {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+}
+
+.panelLink {
+  font-size: 0.72rem;
+  color: var(--color-accent-cool);
+  text-decoration: none;
+}
+
+.panelLink:hover,
+.panelLink:focus-visible {
+  text-decoration: underline;
+}
+
+.address {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: var(--color-text);
+}
+
+.divider {
+  width: 1px;
+  height: 14px;
+  background: color-mix(in srgb, var(--color-accent-cool) 20%, transparent);
+  flex-shrink: 0;
+}
+
+.balance {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.disconnectButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.disconnectButton:hover,
+.disconnectButton:focus-visible {
+  background: color-mix(in srgb, var(--color-danger) 13%, transparent);
+  color: var(--color-danger);
+}
+
+.disconnectIcon {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 560px) {
+  .balance {
+    display: none;
+  }
+}
+
+/*
+ * The low-balance drip.
+ *
+ * Sits beside the balance rather than replacing it, because it is a second
+ * fact about the same number: how much there is, and that it is not enough
+ * to play with. Tinted warm against a header that is otherwise entirely
+ * cool, so it reads as "you need to do something" without a badge, a count
+ * or a colour anybody has to learn.
+ */
+
+/*
+ * The box the drip falls inside.
+ *
+ * Taller and wider than the glyph it holds, and clipping. The drop moves and
+ * stretches, and this is the guarantee that neither can reach the pill's own
+ * edge — the clearance is sized so the clip never actually fires, so it is a
+ * fence rather than a mask. `place-items: center` keeps the glyph level with
+ * the balance beside it while the box around it is bigger than the glyph.
+ */
+.dropSlot {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 24px;
+  flex: none;
+  overflow: hidden;
+}
+
+.lowBalanceIcon {
+  grid-area: 1 / 1;
+  width: 13px;
+  height: 13px;
+  color: var(--color-warn, #e8b064);
+  /*
+   * Bottom origin, because that is where a drop is attached to the thing it
+   * is falling off: stretching it grows the tail upwards and squashing it
+   * flattens it against the floor, which is the pair of deformations that
+   * makes the fall read as liquid rather than as a sprite being moved.
+   */
+  transform-origin: 50% 100%;
+  animation: wallet-drip 8.4s ease-in-out infinite;
+}
+
+/*
+ * One drip, twice per cycle, at 0s and 3.78s — so the gaps are 3.8s and 4.6s
+ * rather than one metronomic interval. Two uneven beats is what keeps a loop
+ * this short from reading as a clock in the corner of the header.
+ *
+ * The 1.0s of motion is the whole of it; the other 7.4s the glyph is a static
+ * icon. Within that second: it gathers (wide and low, the drop swelling at the
+ * lip), pulls away thin and long, flattens on impact, then springs back up
+ * past its rest position and settles. Nothing here is a uniform scale — the
+ * shape is different in every frame, which is the point.
+ *
+ * Travel is +4.4px down and -1.4px up on a 13px glyph, well inside .dropSlot.
+ */
+@keyframes wallet-drip {
+  0%,
+  45% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.36, 0, 0.66, -0.2);
+  }
+  2.4%,
+  47.4% {
+    /* Gathering at the lip: heavier and wider before anything falls. */
+    transform: translateY(0) scale(1.16, 0.86);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.9, 0.45);
+  }
+  4.8%,
+  49.8% {
+    /* In the air, drawn thin by its own fall. */
+    transform: translateY(2.4px) scale(0.8, 1.26);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55);
+  }
+  7.4%,
+  52.4% {
+    /* Impact: flattened against the bottom of the slot. */
+    transform: translateY(4.4px) scale(1.18, 0.76);
+    animation-timing-function: cubic-bezier(0.2, 0.85, 0.35, 1);
+  }
+  9.5%,
+  54.5% {
+    /* And back up, overshooting the rest position on the way. */
+    transform: translateY(-1.4px) scale(0.88, 1.14);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.4, 1);
+  }
+  12%,
+  57%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+
+/*
+ * The top-up. It is on the panel permanently, so most of the time it is an
+ * ordinary button — the wave below is the exception, not its resting state.
+ */
+.faucetButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-warn, #e8b064) 45%, transparent);
+  background: color-mix(in srgb, var(--color-warn, #e8b064) 14%, transparent);
+  color: var(--color-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  --seat-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-warn, #e8b064) 22%, transparent);
+  box-shadow: var(--seat-shadow);
+}
+
+/*
+ * The wave the rail's Probe and Intercept wear: a ring leaving the control's
+ * own outline and fading outwards, once every two and a half seconds.
+ *
+ * Only on an empty wallet, which is the same condition that puts the drip in
+ * the header — the two are one signal seen from two places, and neither is
+ * spent on a wallet that is merely short. A player who is low can still
+ * play; a player at zero cannot do anything at all until this button is
+ * pressed, and that is the one case worth the loudest thing the panel has.
+ *
+ * The ring is animated on the button's own `box-shadow`, with the resting
+ * layer held in `--seat-shadow` so the keyframes carry it forward instead of
+ * a second copy drifting away from the original.
+ */
+.faucetUrgent {
+  animation: faucet-wave 2.5s ease-out infinite;
+}
+
+/*
+ * The wave stops once the invitation has landed — a pointer on the control,
+ * or a press already in flight. A wave on a button that is sending, or on one
+ * that has already sent, is asking for a second press that would be refused.
+ */
+.faucetButton:hover:not(:disabled),
+.faucetButton:focus-visible:not(:disabled) {
+  outline: none;
+  background: color-mix(in srgb, var(--color-warn, #e8b064) 26%, transparent);
+  border-color: color-mix(in srgb, var(--color-warn, #e8b064) 70%, transparent);
+}
+
+.faucetButton:hover,
+.faucetButton:focus-visible,
+.faucetButton:active,
+.faucetButton:disabled {
+  animation: none;
+  box-shadow: var(--seat-shadow);
+}
+
+.faucetButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@keyframes faucet-wave {
+  0% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 0 color-mix(in srgb, var(--color-warn, #e8b064) 40%, transparent);
+  }
+  64%,
+  100% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 8px color-mix(in srgb, var(--color-warn, #e8b064) 0%, transparent);
+  }
+}
+
+.faucetIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * The cooldown, in the label's place. Tabular figures so the seconds column
+ * does not jitter the two beside it once a second, and the same weight as
+ * the words it replaces — this is still the button saying what it is, not a
+ * readout that has appeared inside one.
+ */
+.faucetClock {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.faucetError {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-danger, #e07a7a);
+}

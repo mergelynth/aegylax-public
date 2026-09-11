@@ -1,0 +1,50 @@
+/*
+ * Clipped to the host's own shape, exactly as the ripple is: `inset: 0` plus
+ * an inherited radius means one layer serves a 44px circle and a full-width
+ * pill without either of them being told about it. The host needs
+ * `position: relative` and nothing else — in particular it does not need to
+ * clip anything itself, so a control with something deliberately outside its
+ * box (the probe's count badge) keeps it.
+ */
+.sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/*
+ * White, and blended so it can only ever add light.
+ *
+ * `currentColor` was the obvious choice — it is what the ripple uses — and
+ * it is wrong for a band: on the primary CTA the ink is navy, so the sweep
+ * came out as a dark smear crossing a bright cyan surface and read as a
+ * rendering fault rather than as a scan. `screen` fixes the general case
+ * instead of the two known ones: it lightens whatever it crosses and can
+ * never darken it, so the same band glosses the cyan CTA and lights up the
+ * dark HUD circle without either surface being named here.
+ */
+.beam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  /*
+   * Raked rather than upright: a vertical edge crossing a control reads as
+   * a wipe, a leaning one reads as a scan. The lean is the gradient's angle
+   * and not a `skewX`, because a second transform component to compose is
+   * exactly what would cost the travel its accelerated path — see
+   * `BusySweep.tsx`.
+   */
+  background: linear-gradient(104deg, transparent 12%, #ffffff 50%, transparent 88%);
+  mix-blend-mode: screen;
+  opacity: 0.36;
+}
+
+/* ТЗ §20 — parked, not removed. */
+.still {
+  left: 22.5%;
+  opacity: 0.28;
+}

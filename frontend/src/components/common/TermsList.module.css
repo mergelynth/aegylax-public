@@ -1,0 +1,36 @@
+/*
+ * Two columns where there is room, one where there isn't — the same block
+ * has to work at dialog width and at details-drawer width.
+ */
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2px var(--space-5);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel-alt);
+  border: 1px solid var(--color-border);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 3px 0;
+}
+
+.label {
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+}
+
+.value {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

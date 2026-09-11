@@ -1,0 +1,207 @@
+/*
+ * ТЗ §14 — the surface a ripple is painted inside.
+ *
+ * `position: relative` gives the ink something to be absolute against, and
+ * `overflow: hidden` clips it to the button's rounded shape. Neither
+ * touches the button's own drop shadow, which is painted outside the box
+ * and so is not subject to `overflow` (that is what keeps the primary
+ * CTA's glow intact). See `motion/RippleLayer`.
+ */
+.button {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-panel-alt);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  cursor: pointer;
+  /*
+   * No `transform` here on purpose.
+   *
+   * The scale on hover and on press is a Motion gesture now (ТЗ §6-§7 —
+   * `whileHover` / `whileTap` in `Button.tsx`), and Motion writes it to the
+   * element's inline style. An inline transform outranks any rule in this
+   * file, so a `:hover { transform: … }` beside it would be dead code that
+   * still looks authoritative — the worst kind. What stays here is
+   * everything the gesture does *not* touch: colour, glow and opacity.
+   */
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    filter 0.12s ease,
+    box-shadow 0.16s ease,
+    opacity 0.12s ease;
+  min-height: 44px;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/*
+ * The primary action, and the one surface a theme may invert (ТЗ §6).
+ *
+ * The ink comes from its own token rather than from `--color-text`, because
+ * the fill decides it: the Fhenix CTA is a cyan surface carrying navy type,
+ * while a theme with a dark button carries white. Both are the same rule —
+ * *read against the button* — and neither can be derived from the colour
+ * the page uses for body copy.
+ */
+.primary {
+  background: var(--gradient-cta);
+  border-color: transparent;
+  color: var(--color-cta-text);
+}
+
+/*
+ * Hover lifts the fill a little and lets the theme's shadow do the rest
+ * (ТЗ §6: subtle glow, no neon). `brightness` rather than a second
+ * gradient, so a theme whose CTA is dark and one whose CTA is bright both
+ * get a hover that goes the right way without stating it.
+ */
+/*
+ * ТЗ §6 — the accent comes up a step under the pointer, and the glow with
+ * it. The scale is the Motion gesture's; this is the light.
+ */
+.primary:hover:not(:disabled) {
+  border-color: transparent;
+  filter: brightness(1.09);
+  box-shadow:
+    var(--shadow-cta),
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.small {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: inherit;
+  align-items: inherit;
+  justify-content: inherit;
+  gap: inherit;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * ТЗ §8-§10 — the wait, and the end of it.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/*
+ * A busy button is dimmed less than a disabled one, and that gap is the
+ * whole point: `:disabled` at 0.5 says "not available", and a button that
+ * is working is very much available — it is just not finished. Reading as
+ * "off" while a transaction is in flight is what makes people press again.
+ */
+.button:disabled.busy {
+  opacity: 0.86;
+  cursor: progress;
+}
+
+/*
+ * The wait itself is not drawn here any more.
+ *
+ * It used to be three dots after the label, animated by the keyframes that
+ * stood at this spot — one of four different pictures of "working" in the
+ * product, none of which agreed with the others. There is one now, it is
+ * `motion/BusySweep`, and every control that can be waited on renders it,
+ * so the answer to "what does busy look like" is the same wherever it is
+ * asked. What stays in this file is the part the sweep does not do:
+ * the opacity and the cursor above.
+ */
+
+/*
+ * ТЗ §10 — the completion, as one short pass of light rather than a tick.
+ *
+ * A tick would be a second piece of iconography appearing where the label
+ * is, and this button is usually about to be replaced by whatever the
+ * action produced. A brief brightening says "that worked" and gets out of
+ * the way.
+ */
+.success {
+  animation: button-success 620ms var(--boot-ease, ease-out);
+}
+
+@keyframes button-success {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(1.35);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 55%, transparent);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+/* ТЗ §20 — the wait is still shown, it just stops moving. */
+@media (prefers-reduced-motion: reduce) {
+  .success {
+    animation: none;
+  }
+}
+
+/*
+ * ТЗ §9 — the hold's remaining wait, as a bar filling the button.
+ *
+ * A wash too faint to see is how 400ms used to hide: the hold happened, but
+ * nothing on the surface said how much of it was left. The fill is the
+ * remaining time; the 3px rail along the bottom is the same wait read as a
+ * loader. `transform` alone, so the whole progression is one accelerated
+ * property and an abandoned hold is a single unmount with nothing to clean
+ * up. Behind the label (`z-index: 0` here, `1` on `.label`) so the words
+ * stay readable while it charges.
+ */
+.holdProgress {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: left center;
+  pointer-events: none;
+  --hold-fill: color-mix(in srgb, currentColor 26%, transparent);
+  --hold-bar: currentColor;
+  background:
+    linear-gradient(var(--hold-bar), var(--hold-bar)) 0 100% / 100% 3px no-repeat,
+    var(--hold-fill);
+}
+
+/*
+ * On the primary CTA the fill is the ink's colour rather than white — the
+ * same reasoning as `--color-cta-text`. Navy charging across cyan is a
+ * darker region growing, not a smear of light on an already-bright surface.
+ */
+.primary .holdProgress {
+  --hold-fill: color-mix(in srgb, var(--color-cta-text) 32%, transparent);
+  --hold-bar: var(--color-cta-text);
+}

@@ -1,0 +1,184 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.buyButton {
+  --seat-shadow: var(--shadow-cta);
+  gap: 10px;
+  padding: 8px 18px 8px 8px;
+  box-shadow: var(--seat-shadow);
+  white-space: nowrap;
+}
+
+/*
+ * Same invitation as Home's Create Operation: a ring that breathes out of
+ * the CTA's own glow. Only while a purchase can still land — hover, a press
+ * in flight, or a full allotment all mean the ring is asking for something
+ * that is already happening or already refused.
+ */
+.buyButton[data-invite='on'] {
+  animation: cta-wave 2.8s ease-out infinite;
+}
+
+.buyButton[data-invite='on']:hover,
+.buyButton[data-invite='on']:focus-visible,
+.buyButton[data-invite='on']:active,
+.buyButton[data-invite='on']:disabled {
+  animation: none;
+}
+
+@keyframes cta-wave {
+  0% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 0 color-mix(in srgb, var(--color-accent) 44%, transparent);
+  }
+  64%,
+  100% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 9px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+/*
+ * Remaining / cap, as a capsule rather than a glyph. The button already
+ * says "Buy probe"; a dish icon next to that was a second name for the
+ * same thing. A mono chip is a reading, not a label.
+ */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  height: 24px;
+  padding: 0 8px 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-cta-text) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-cta-text) 20%, transparent);
+  font-family: var(--font-mono);
+  line-height: 24px;
+}
+
+.have {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.cap {
+  font-size: 0.62rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+  margin-left: 1px;
+}
+
+.blocked,
+.error {
+  max-width: 46ch;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+.blocked {
+  color: var(--color-text-dim);
+}
+
+.error {
+  color: color-mix(in srgb, var(--color-danger) 54%, #fff0f2);
+}
+
+.counted .have,
+.reading.counted {
+  animation: probe-arrived 720ms ease-out;
+}
+
+@keyframes probe-arrived {
+  from {
+    color: color-mix(in srgb, var(--color-cta-text) 40%, #fff);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--color-cta-text) 35%, transparent);
+  }
+  to {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buyButton[data-invite='on'] {
+    animation: none;
+  }
+
+  .counted .have,
+  .reading.counted {
+    animation: none;
+  }
+}
+
+/*
+ * The details-drawer row this component wore before the hero CTA existed.
+ * Compact: counts on the left, a small Buy on the right, so it still fits
+ * after the round has started and this is the only purchase control left.
+ */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 4px;
+}
+
+.counts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-label);
+}
+
+.reading {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sub {
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
+}
+
+.drawerBuy {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 158px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.drawerBlocked,
+.drawerError {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.drawerBlocked {
+  color: var(--color-text-dim);
+}
+
+.drawerError {
+  color: color-mix(in srgb, var(--color-danger) 54%, #fff0f2);
+}

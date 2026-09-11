@@ -1,0 +1,20 @@
+.link {
+  color: inherit;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  transition: border-color 140ms ease, color 140ms ease;
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--color-accent, #6ee7ff);
+  border-bottom-color: currentColor;
+}
+
+/* No explorer on this network: the value is still worth showing, just not
+   as something clickable. */
+.plain {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: inherit;
+}

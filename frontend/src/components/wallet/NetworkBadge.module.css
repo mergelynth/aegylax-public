@@ -1,0 +1,30 @@
+/*
+ * No border, and no pill.
+ *
+ * The badge sits inside the account panel, which already has one — so the
+ * outline was a box drawn inside a box, and it gave a passive readout the
+ * same weight as the controls beside it. The status dot is what carries the
+ * meaning here; the frame was only ever carrying itself.
+ *
+ * The padding stays so the row keeps its rhythm with the rest of the panel.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.dot.ok {
+  background: var(--color-success);
+}

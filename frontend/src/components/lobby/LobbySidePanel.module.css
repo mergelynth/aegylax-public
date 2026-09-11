@@ -1,0 +1,272 @@
+/*
+ * `--panel-width` is the single number the whole drawer is built from: the
+ * body's width, and the exact distance the row travels when it closes. It
+ * comes from `--lobby-panel-width` in globals.css because the playfield
+ * has to reserve exactly this much room for it.
+ */
+.panel {
+  --panel-width: var(--lobby-panel-width);
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* Under the header (z-index 10), not over it — the wallet control and the
+     brand stay reachable while the drawer is open. */
+  z-index: 9;
+  display: flex;
+  align-items: stretch;
+  /* Only the handle and the body take pointer events; the row itself must
+     not swallow clicks aimed at the map behind it. */
+  pointer-events: none;
+  transform: translateX(var(--panel-width));
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.open {
+  transform: translateX(0);
+}
+
+/* A vertical tab on the drawer's outer edge — the same frosted chrome as
+   the rest of the scene's overlays. */
+.handle {
+  pointer-events: auto;
+  align-self: center;
+  /* Column, so the chevron sits at the end of the vertical label — which,
+     with the text running top to bottom, means underneath it. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  /* Positioning context for the glint overlay below. */
+  position: relative;
+  padding: var(--space-4) 7px;
+  border: 1px solid #ffffff1f;
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg) 93%, transparent), color-mix(in srgb, var(--color-bg) 82%, transparent));
+  /*
+   * No `backdrop-filter`, for the reason `ApocalypseTimer` spells out and
+   * `EarthSphere` names this surface in: a backdrop blur is recomputed
+   * whenever what is *behind* it changes, and what is behind this is the
+   * spinning planet. The blur was being re-run for every step of Earth's
+   * rotation, forever, on the screen a player sits on for a whole round.
+   *
+   * It was also buying almost nothing. The gradient below already stops
+   * most of the scene, so the blur was working on the remainder — the same
+   * arithmetic that took it off the Home screen's pills. The opacity is
+   * raised a little to cover the difference, which costs nothing per frame.
+   */
+  box-shadow: -10px 0 28px -12px #000000d9;
+  color: var(--color-text-label);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+/*
+ * A glint that traces the tab's outline, top corner to bottom corner, every
+ * few seconds.
+ *
+ * The tab is the only way back to a closed drawer, and closed is its resting
+ * state — so on a scene with nothing else moving it can read as trim rather
+ * than as a control. This is the smallest thing that says "press me": a
+ * highlight that travels the contour and then stops for four seconds. Not a
+ * pulse, which would nag; one pass, then quiet.
+ *
+ * Built the same way as the protocol status ring — a gradient masked down to
+ * the 1px border band, so the light appears to run *along the outline*
+ * rather than washing over the face of the button.
+ *
+ * The geometry: the image is three times the tab's height, with a soft
+ * bright stripe across its middle. Background-position percentages resolve
+ * against (container − image), so 100% parks the stripe above the tab and 0%
+ * parks it below; animating between them sweeps it down the contour once.
+ * The 175deg tilt is what makes the top edge light from its right corner
+ * inwards, and the bottom edge finish at its right corner, rather than both
+ * edges flashing all at once.
+ */
+.handle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background-image: linear-gradient(
+    175deg,
+    transparent 42%,
+    color-mix(in srgb, var(--color-accent) 70%, transparent) 50%,
+    transparent 58%
+  );
+  background-size: 100% 300%;
+  background-repeat: no-repeat;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: handleGlint 5s ease-in-out infinite;
+}
+
+/*
+ * The sweep occupies about a third of the cycle and the rest is rest, which
+ * is what keeps it an occasional glint rather than a loop.
+ */
+@keyframes handleGlint {
+  0%,
+  12% {
+    background-position: 0 100%;
+  }
+  48%,
+  100% {
+    background-position: 0 0%;
+  }
+}
+
+.handle:hover,
+.handle:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+/* Hovering is already an answer to "is this a control?", so the glint stops
+   getting in the way of the hover state. */
+.handle:hover::after,
+.handle:focus-visible::after {
+  animation: none;
+  opacity: 0;
+}
+
+.handleLabel {
+  writing-mode: vertical-rl;
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.handleChevron {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Closed, the glyph's own direction (left) already says "this opens
+   leftwards"; open, it flips to point back out the way it will go. The
+   duration matches the drawer's own slide so the two read as one motion. */
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  pointer-events: auto;
+  width: var(--panel-width);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-bg-panel);
+  border-left: 1px solid var(--color-border-strong);
+  /*
+   * No `backdrop-filter` here, deliberately. `--color-bg-panel` is 90%
+   * opaque, so a blur behind it contributes a tenth of what is seen — and
+   * it is charged for at full price: the drawer is the tallest surface on
+   * the screen, and the scene it covers (a spinning planet over a star
+   * field) invalidates the backdrop on every frame, so the browser
+   * re-blurs a full-height region 60 times a second for an effect nobody
+   * can see. The panel is glass by colour, not by filter.
+   */
+  box-shadow: -30px 0 70px -30px #000000e6;
+  scrollbar-gutter: stable;
+}
+
+/*
+ * Same slim, glassy scrollbar the Defense Setup dialog uses, for the same
+ * reasons — see `Modal.module.css`: the @supports guard keeps Chromium on
+ * the pseudo-element rules, and the colours are literal because custom
+ * properties do not resolve inside ::-webkit-scrollbar.
+ */
+@supports not selector(::-webkit-scrollbar) {
+  .body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
+.body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.body::-webkit-scrollbar-track {
+  background-color: transparent;
+  margin: 18px 0;
+}
+
+.body::-webkit-scrollbar-thumb {
+  background-color: #265464;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.body::-webkit-scrollbar-thumb:hover {
+  background-color: #43e6e0;
+}
+
+.body::-webkit-scrollbar-thumb:active {
+  background-color: #7ef2ec;
+}
+
+/* The top padding clears the header row the drawer passes underneath. */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: calc(var(--space-6) + 44px) var(--space-4) var(--space-6);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Below this the header wraps to two rows, so the drawer needs to start
+   further down to clear the row it passes underneath. */
+@media (max-width: 1000px) {
+  .content {
+    padding-top: calc(var(--space-6) + 80px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
+  /* The chevron still flips — it is state, not decoration — it just stops
+     animating between the two. The glint is pure attention-getting, so it
+     goes entirely. */
+  .handleChevron {
+    transition: none;
+  }
+  .handle::after {
+    animation: none;
+    opacity: 0;
+  }
+}

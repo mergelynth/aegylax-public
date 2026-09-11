@@ -1,0 +1,245 @@
+/*
+ * ТЗ §14 — digital depth without carbon, metal or bevel.
+ *
+ * The rail is a recessed surface: a dark inner ground, an inset shadow along
+ * its top edge for the depth, and a hairline of accent light along the
+ * bottom. The ticks, the lit band and the handles carry the only real
+ * luminance, so the eye reads the value first and the chrome second.
+ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* ТЗ §13 — the label is the small half of the pair; the value is the loud one. */
+.label {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-label);
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.end {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+/*
+ * The rail is the press surface: everything inside it is `pointer-events:
+ * none`, so a click anywhere along the track reaches the handler that moves
+ * the nearer handle (see `CapacityRange.tsx`).
+ */
+.rail {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  /* A horizontal drag on this control is never a page scroll. */
+  touch-action: none;
+  user-select: none;
+}
+
+.dragging {
+  cursor: grabbing;
+}
+
+/*
+ * The coordinate space, inset by the handle's radius at both ends.
+ *
+ * Ticks, band and handles are all positioned inside it, and the pointer
+ * maths measures this exact box — so the value a press resolves to is the
+ * value the handle under it is drawn at, and a handle at either end sits
+ * centred on its mark rather than half off the rail.
+ */
+.scale {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* The recessed surface itself, drawn as the rail's own ground. */
+.rail::before {
+  content: '';
+  position: absolute;
+  inset: 9px 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #00000059, transparent 60%), var(--color-bg-panel-alt);
+  box-shadow:
+    inset 0 1px 2px #00000073,
+    inset 0 -1px 0 color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.tick,
+.tickLit {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 7px;
+  margin: -3.5px 0 0 -0.5px;
+  border-radius: 1px;
+}
+
+.tick {
+  background: color-mix(in srgb, var(--color-border-strong) 80%, transparent);
+}
+
+/* A position inside the band the creator has chosen. */
+.tickLit {
+  height: 9px;
+  margin-top: -4.5px;
+  background: color-mix(in srgb, var(--color-accent) 62%, transparent);
+}
+
+/* The chosen span, lit between the handles. */
+.band {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 46%, transparent), var(--color-accent));
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--color-accent) 60%, transparent);
+  pointer-events: none;
+}
+
+/*
+ * The platform's slider, kept for its keyboard and its semantics and hidden
+ * as a surface. It takes no presses at all — the rail above handles those —
+ * so the two stacked inputs cannot steal each other's clicks, and there is
+ * no longer any part of the track that a press falls through.
+ */
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  pointer-events: none;
+}
+
+.input:focus {
+  outline: none;
+}
+
+.input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+}
+
+.input::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+}
+
+.input::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+/* The handle the creator actually sees: light, small, centred on its value. */
+.thumb {
+  position: absolute;
+  /* Above both transparent inputs, which carry z-indices of their own. */
+  z-index: 4;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--color-accent-soft), var(--color-accent));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 46%, transparent),
+    0 0 12px -1px color-mix(in srgb, var(--color-accent) 72%, transparent);
+  pointer-events: none;
+}
+
+/* ТЗ §15 — focus is a perimeter trace, not a browser outline, and it lands
+   on the one handle that has focus (see the note in `CapacityRange.tsx`). */
+.input:focus-visible + .thumb {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 70%, transparent),
+    0 0 16px 0 color-mix(in srgb, var(--color-accent) 78%, transparent);
+}
+
+.note {
+  display: block;
+  min-height: 1.35em;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--color-text-dim);
+  opacity: 0.8;
+}
+
+/*
+ * ТЗ §16 — a bad value is reported by the control that holds it, and the
+ * layout around it does not move: the note line is the same height either
+ * way, and only the colour and the rail's light change.
+ */
+.invalid .note {
+  color: var(--color-danger);
+  opacity: 1;
+}
+
+.invalid .band {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-danger) 46%, transparent), var(--color-danger));
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--color-danger) 60%, transparent);
+}
+
+.invalid .tickLit {
+  background: color-mix(in srgb, var(--color-danger) 62%, transparent);
+}
+
+.invalid .thumb {
+  background: linear-gradient(180deg, var(--color-danger-pale), var(--color-danger));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 46%, transparent);
+}

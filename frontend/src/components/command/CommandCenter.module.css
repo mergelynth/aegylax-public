@@ -1,0 +1,1370 @@
+/*
+ * ТЗ §1 — a holographic HUD lying inside the planet.
+ *
+ * `--earth-size` is the globe's drawn diameter. The module lives in the
+ * visible cap: chamfered navy glass, a static gray outer rim, and a
+ * notched inner track that carries the neon chase. Settlement uses the
+ * same silhouette. The octagon clip lives on the glass fill (SVG path),
+ * not here — clipping the console itself would square off the rounded
+ * chamfers and cut the stroke glow.
+ */
+.console {
+  --earth-size: clamp(320px, 46vw, 680px);
+
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--earth-size) * 0.045);
+  transform: translateX(-50%);
+  z-index: 6;
+  isolation: isolate;
+  overflow: visible;
+  width: calc(var(--earth-size) * 0.7);
+  height: calc(var(--earth-size) * 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(var(--space-2), calc(var(--earth-size) * 0.018), var(--space-4));
+  padding: 0 calc(var(--earth-size) * 0.038);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+/*
+ * The console's one line of prose, and it now says one thing only: what
+ * failed. The running commentary and the "why this button is grey" captions
+ * that used to share this slot are gone — see `CommandCenter`.
+ *
+ * Above the module rather than inside it. The module is sized to the planet's
+ * cap and has exactly enough room for two readouts and two buttons, so a
+ * message inside it would either shrink the controls or overflow the glass;
+ * above it the line sits over the scene, centred on the console, and appears
+ * only when something has actually gone wrong.
+ */
+.notice {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(92vw, calc(var(--earth-size) * 1.1));
+  margin: 0;
+  text-align: center;
+  font-size: clamp(11px, calc(var(--earth-size) * 0.024), 14px);
+  line-height: 1.35;
+  /* Legible over continents and over black sky alike. */
+  text-shadow: 0 1px 6px #000000cc;
+  pointer-events: none;
+}
+
+.noticeError {
+  color: color-mix(in srgb, var(--color-danger) 56%, #fff0f2);
+}
+
+.console.settled {
+  justify-content: center;
+}
+
+.settledNote {
+  position: relative;
+  z-index: 3;
+  margin: 0;
+  max-width: 36ch;
+  text-align: center;
+  font-size: clamp(0.62rem, calc(var(--earth-size) * 0.026), 0.78rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  line-height: 1.35;
+}
+
+.noticeWait {
+  color: color-mix(in srgb, var(--color-text-label) 70%, #fff);
+}
+
+/*
+ * Dark navy glass only — Earth may show through. Clip-path is the SVG
+ * octagon, set as an inline `path()` so the fill follows the rounded
+ * chamfers instead of a sharp CSS polygon.
+ */
+.hudGlass {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-panel-alt) 92%, transparent) 0%,
+      color-mix(in srgb, var(--color-bg-panel) 92%, transparent) 55%,
+      color-mix(in srgb, var(--color-bg) 94%, transparent) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-accent) 9%, transparent),
+    inset 0 -16px 28px -22px color-mix(in srgb, var(--color-bg) 67%, transparent);
+  /*
+   * No `backdrop-filter`, for the reason `ApocalypseTimer` spells out and
+   * `EarthSphere` names this surface in: a backdrop blur is recomputed
+   * whenever what is *behind* it changes, and what is behind this is the
+   * spinning planet. The blur was being re-run for every step of Earth's
+   * rotation, forever, on the screen a player sits on for a whole round.
+   *
+   * It was also buying almost nothing. The gradient below already stops
+   * most of the scene, so the blur was working on the remainder — the same
+   * arithmetic that took it off the Home screen's pills. The opacity is
+   * raised a little to cover the difference, which costs nothing per frame.
+   */
+  pointer-events: none;
+}
+
+.hudSvg {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.hudOuter,
+.hudInner {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: miter;
+  stroke-miterlimit: 8;
+  vector-effect: non-scaling-stroke;
+}
+
+.hudOuter {
+  stroke: var(--color-text-label);
+  stroke-width: 1.15px;
+  opacity: 0.72;
+}
+
+.hudInner {
+  stroke: var(--color-text-dim);
+  stroke-width: 1.15px;
+  opacity: 0.42;
+}
+
+/*
+ * The pulse. Only the mask band moves — the neon strokes below are static
+ * full-perimeter paths, so the head and tail taper with the band's blur
+ * instead of with stroke width.
+ *
+ * Nothing here may carry `vector-effect: non-scaling-stroke`: the dashes
+ * are normalised by `pathLength`, and non-scaling-stroke moves the pattern
+ * into screen space while offsets stay in path space, so on a 2× display
+ * the pattern repeats and each pulse appears twice. The viewBox tracks the
+ * panel's pixel box, so plain user units already render 1:1.
+ */
+/*
+ * The resting lap. It is 40s here and stays 40s while a probe is out — the
+ * scan speeds the band up by scaling its `playbackRate` from script, not by
+ * shortening this, because the two bands' half-lap separation is measured
+ * against this number. See `SCAN_RATE` in `CommandHudFrame.tsx`.
+ */
+.hudBand {
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: butt;
+  animation: hudChase 40s linear infinite;
+}
+
+.hudGlowWide,
+.hudGlowFar,
+.hudGlowNear,
+.hudCore {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hudGlowWide {
+  stroke-width: 2.1;
+  opacity: 0.55;
+}
+
+.hudGlowFar {
+  stroke-width: 1.6;
+  opacity: 0.85;
+}
+
+.hudGlowNear {
+  stroke-width: 1.2;
+  opacity: 0.95;
+}
+
+.hudCore {
+  stroke-width: 1;
+}
+
+/*
+ * The two pulses that ride the frame while an attack is in the sky.
+ *
+ * They used to be a magenta one and a cyan one — two hues chasing each
+ * other, which is how a status frame turns into a light show. They are now
+ * one hue at two temperatures: the accent, and the cooler blue beside it on
+ * the ramp. They still read as two distinct pulses (that is the whole point
+ * of running them opposite each other) without either of them introducing a
+ * colour the product owns nowhere else (ТЗ §9, §13).
+ *
+ * Each pulse is a thin core over three widening halos, so the halos are the
+ * saturated end of the ramp and the core is the pale one.
+ */
+.hudGlowAccentWide {
+  stroke: color-mix(in srgb, var(--color-accent) 62%, #04343a);
+}
+
+.hudGlowAccentFar {
+  stroke: color-mix(in srgb, var(--color-accent) 82%, #04343a);
+}
+
+.hudGlowAccentNear {
+  stroke: var(--color-accent);
+}
+
+.hudCoreAccent {
+  stroke: var(--color-accent-soft);
+}
+
+.hudGlowCoolWide {
+  stroke: color-mix(in srgb, var(--color-accent-cool) 58%, #052734);
+}
+
+.hudGlowCoolFar {
+  stroke: color-mix(in srgb, var(--color-accent-cool) 80%, #052734);
+}
+
+.hudGlowCoolNear {
+  stroke: var(--color-accent-cool);
+}
+
+.hudCoreCool {
+  stroke: color-mix(in srgb, var(--color-accent-cool) 34%, var(--color-text));
+}
+
+@keyframes hudChase {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+/*
+ * ТЗ §3 — the readouts. One column, two lines, no housing.
+ *
+ * There is no border, no background and no radius anywhere in this block on
+ * purpose: ТЗ asks for the readings to carry no frames, cards or bubbles at
+ * all, and the fix is not smaller boxes but none.
+ */
+.readouts {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(4px, calc(var(--earth-size) * 0.01), 8px);
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 46%;
+}
+
+.readoutRule {
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 1px 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-accent) 33%, transparent),
+    color-mix(in srgb, var(--color-accent-cool) 27%, transparent) 70%,
+    transparent
+  );
+  opacity: 0.7;
+}
+
+.spine {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 12px;
+  padding: clamp(10px, calc(var(--earth-size) * 0.028), 18px) 0;
+}
+
+/*
+ * Tapered at both ends rather than cut off square: the line is clipped to a
+ * slender lens, so it thins to a point where it meets each plus, and the
+ * gradient takes the brightness down with the width so the two ends read as
+ * one gesture. A 1px hairline has no width to lose — hence the 1.5px waist,
+ * which is still under two device pixels at the middle.
+ */
+.spineLine {
+  flex: 1;
+  width: 1.5px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-cool-pale) 60%, transparent) 18%,
+    var(--color-cool-pale) 50%,
+    color-mix(in srgb, var(--color-cool-pale) 60%, transparent) 82%,
+    transparent 100%
+  );
+  clip-path: polygon(50% 0, 100% 16%, 100% 84%, 50% 100%, 0 84%, 0 16%);
+  opacity: 0.3;
+}
+
+.spinePlus {
+  font-family: var(--font-mono);
+  font-size: clamp(7px, calc(var(--earth-size) * 0.014), 9px);
+  line-height: 1;
+  color: var(--color-cool-pale);
+  opacity: 0.32;
+  text-shadow: none;
+}
+
+.readout {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, calc(var(--earth-size) * 0.012), 10px);
+  min-width: 0;
+  color: var(--tone, var(--color-text-label));
+}
+
+/* The glyph takes the line's own colour, so the mark and the number agree. */
+.readoutIcon {
+  flex: none;
+  /* Kept in step with the value beside it — a glyph that stayed at the old
+     size would read as a bullet next to the number rather than as its mark. */
+  width: clamp(17px, calc(var(--earth-size) * 0.034), 24px);
+  height: clamp(17px, calc(var(--earth-size) * 0.034), 24px);
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 2px #000000a6);
+}
+
+.readoutBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/*
+ * The label, at a size somebody can actually read.
+ *
+ * It used to bottom out at 0.4rem — around six pixels — which is not small
+ * type, it is decoration in the shape of a word. Nothing forced it there
+ * except the lens: with arcs top and bottom, the readout column had roughly a
+ * third of the module's height to live in. Straight edges give that height
+ * back, so the floor is a legible size and the tracking comes down, because
+ * 0.18em on eleven-pixel type spaces the letters further apart than a reader
+ * groups them.
+ */
+.readoutLabel {
+  font-size: clamp(0.52rem, calc(var(--earth-size) * 0.012), 0.68rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #e8eef8;
+  opacity: 0.9;
+}
+
+/*
+ * The number is the thing being read, so it is the largest type on the
+ * module and set in the technical face — tabular, so a countdown of probes
+ * or a shifting coordinate does not jitter as it changes.
+ *
+ * Raised by about half again over the lens-era size for the same reason as
+ * the label: the value is what the module exists to show, and on a
+ * 320px-globe phone it was rendering at around ten pixels of monospace
+ * against a lit planet.
+ */
+.readoutValue {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(0.95rem, calc(var(--earth-size) * 0.024), 1.45rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--tone, var(--color-text));
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tone, var(--color-accent)) 45%, transparent);
+}
+
+/*
+ * The note under a reading — when a Defense Point arrives, and whether that
+ * is too early or too late.
+ *
+ * Its own line, and allowed to wrap. It used to trail the value inside the
+ * same `nowrap` clamp, which meant the console showed the coordinate and
+ * then a single letter of the sentence explaining it. Two short lines fit
+ * where one long one could not.
+ */
+.readoutSub {
+  display: block;
+  font-size: 0.72em;
+  font-weight: 500;
+  line-height: 1.25;
+  opacity: 0.62;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Each reading keeps its own accent so the eye can find it by colour. */
+.probe {
+  --tone: #5ee7ff;
+}
+
+/*
+ * Both states of the Defense reading are green, and the pair reads as one
+ * before / after: the pale mint is a coordinate that can still be moved,
+ * the saturated one is a coordinate that cannot. The verb below says
+ * SUBMITTED at the same moment, so this only has to be a shift in weight.
+ */
+.point {
+  --tone: color-mix(in srgb, var(--color-success) 62%, var(--color-text));
+}
+
+.locked {
+  --tone: var(--color-success);
+}
+
+.late {
+  --tone: var(--color-warning-pale);
+}
+
+/*
+ * ТЗ §4 — the two controls, centred on one horizontal axis.
+ *
+ * `align-items: center` is the "synchronised" part: the buttons are
+ * deliberately different sizes, so aligning them on their shared centre
+ * line is the only arrangement in which the small one reads as belonging
+ * to the large one rather than as sitting above or below it.
+ */
+.actions {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: clamp(10px, calc(var(--earth-size) * 0.028), 20px);
+}
+
+/*
+ * ТЗ §4 — the secondary verb, in reconnaissance blue: the same blue as the
+ * probe's wave and the uncertainty cloud it leaves (ТЗ §1, §3). Smaller than
+ * Defense by design, and the only other bubble on the module. The badge
+ * carries the one number that decides whether it can fire at all.
+ */
+.reconWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.reconWrap::before {
+  content: '';
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--color-cool-pale) 9%, transparent) 0%, color-mix(in srgb, var(--color-cool-pale) 3%, transparent) 40%, transparent 70%);
+  pointer-events: none;
+}
+
+.reconButton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(36px, calc(var(--earth-size) * 0.078), 52px);
+  height: clamp(36px, calc(var(--earth-size) * 0.078), 52px);
+  padding: 0;
+  border-radius: 50%;
+  border: 1.25px solid color-mix(in srgb, var(--color-cool-pale) 47%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--color-accent) 22%, #ffffff);
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.reconButton:hover:not(:disabled),
+.reconButton:focus-visible:not(:disabled) {
+  outline: none;
+  color: #e2f6ff;
+  border-color: var(--color-cool-pale);
+  box-shadow: 0 0 16px -2px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.reconButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Not merely dimmed: the rim loses its colour, so "cannot fire" is legible
+   at a glance rather than as a subtle opacity difference. */
+.reconButton:disabled {
+  border-color: color-mix(in srgb, var(--color-border-strong) 60%, transparent);
+  color: var(--color-text-dim);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.reconButton:disabled:not(.reconBusy) .badge {
+  background: var(--color-border-strong);
+  color: var(--color-bg);
+}
+
+/*
+ * A probe in flight.
+ *
+ * The motion of this wait is `motion/BusySweep` now, the same band of light
+ * that crosses the primary CTA and the two controls beside this one. What
+ * is left here is the part a shared component cannot know: that the rim
+ * keeps its colour and its glow while the probe is out, so "working" never
+ * borrows the greyed-out rim that means "cannot fire".
+ *
+ * Gone with it are the two animations this button used to run for itself —
+ * a charge ring pinging outwards and the glyph pulsing inside it. The ring
+ * was the reason the wait could not be shared at all: `scale` is
+ * proportional, so the same ping that travelled a few pixels around this
+ * 44px circle travelled forty across a full-width button, and the two
+ * stopped reading as the same event.
+ */
+.reconBusy,
+.reconBusy:disabled {
+  cursor: progress;
+  border-color: color-mix(in srgb, var(--color-cool-pale) 67%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 22%, #ffffff);
+  box-shadow: 0 0 16px -3px color-mix(in srgb, var(--color-accent) 67%, transparent);
+}
+
+.reconBusy .reconIcon,
+.reconBusy:disabled .reconIcon {
+  filter: drop-shadow(0 0 8px #4cc9ffcc);
+}
+
+/*
+ * The one coloured glyph on the console (see `ProbeIcon`). Slightly larger
+ * than the monochrome icons because it carries internal detail, and given a
+ * little bloom so the colour survives sitting on a lit planet.
+ */
+.reconIcon {
+  width: 58%;
+  height: 58%;
+  filter: brightness(1.2) saturate(0.55);
+}
+
+/*
+ * Disabled desaturates rather than recolours. The glyph paints its own
+ * colours, so it cannot follow the button's text colour the way the other
+ * icons do — draining them is the equivalent statement, and it keeps the
+ * shape readable instead of flattening it to one grey.
+ */
+.reconButton:disabled:not(.reconBusy) .reconIcon {
+  filter: grayscale(0.85) brightness(0.75);
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 50%;
+  border: none;
+  background: #00b4e6;
+  color: #04101f;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 67%, transparent);
+}
+
+/*
+ * ТЗ §4 — the primary, and the main action element of the module: the
+ * largest object on it, and a different colour from the secondary on
+ * purpose. Green is the defense verb throughout the game — the locked
+ * point, the raised shield, a successful interception — so making the
+ * button that commits a Defense the same green is what lets a player find
+ * it without reading it.
+ */
+.defendWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(68px, calc(var(--earth-size) * 0.148), 100px);
+  height: clamp(68px, calc(var(--earth-size) * 0.148), 100px);
+}
+
+.defendWrap::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 48%,
+    color-mix(in srgb, var(--color-accent) 9%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 3%, transparent) 42%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.defendDash {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--color-accent) 80%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 33%, transparent);
+  pointer-events: none;
+  animation: dashSpin 22s linear infinite;
+}
+
+.defendHalo {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-accent);
+  box-shadow:
+    0 0 8px var(--color-accent),
+    0 0 22px color-mix(in srgb, var(--color-accent) 47%, transparent);
+  pointer-events: none;
+}
+
+.defendWrap:has(.defendButton:disabled:not(.defendSubmitted):not(.revealBusy)) .defendDash,
+.defendWrap:has(.defendButton:disabled:not(.defendSubmitted):not(.revealBusy)) .defendHalo {
+  opacity: 0.28;
+  animation: none;
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-text-dim));
+  box-shadow: none;
+}
+
+.defendWrapSubmitted .defendDash,
+.defendWrapSubmitted .defendHalo {
+  opacity: 0.55;
+  animation: none;
+  border-color: color-mix(in srgb, var(--color-success) 53%, transparent);
+}
+
+.defendWrapReveal .defendDash {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  box-shadow: 0 0 14px -2px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.defendWrapReveal .defendHalo {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--color-accent) 53%, transparent),
+    0 0 22px color-mix(in srgb, var(--color-accent) 27%, transparent);
+}
+
+@keyframes dashSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.defendButton {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 72%;
+  height: 72%;
+  padding: 0 4px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    transform 0.1s ease,
+    filter 0.15s ease,
+    color 0.15s ease;
+}
+
+.defendButton:hover:not(:disabled),
+.defendButton:focus-visible:not(:disabled) {
+  outline: none;
+  filter: brightness(1.12);
+  color: #ffffff;
+}
+
+.defendButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.defendButton:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--color-text-dim);
+  filter: none;
+}
+
+.defendSubmitted:disabled {
+  background: transparent;
+  color: color-mix(in srgb, var(--color-success) 72%, #e6fff4);
+}
+
+.defendIcon {
+  width: 30%;
+  height: 30%;
+  color: var(--color-accent-soft);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-accent) 60%, transparent));
+}
+
+.defendLabel {
+  max-width: 92%;
+  font-size: clamp(0.48rem, calc(var(--earth-size) * 0.011), 0.64rem);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 33%, transparent);
+}
+
+.revealButton {
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--color-accent) 13%, transparent), transparent 70%);
+  color: var(--color-accent-soft);
+}
+
+.revealButton .defendIcon {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-accent) 53%, transparent));
+}
+
+.revealBusy,
+.revealBusy:disabled {
+  cursor: progress;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%);
+  color: var(--color-text);
+}
+
+.revealWaiting::before,
+.revealWaiting::after {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  pointer-events: none;
+  animation: reveal-ping 2.2s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+}
+
+.revealWaiting::after {
+  animation-delay: 1.1s;
+}
+
+@keyframes reveal-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+/*
+ * The payouts capsule occupies the *same slot* as the Command Center, a
+ * shade taller so the figure can sit at display size without climbing off
+ * Earth. Cap of the globe is `0.4 d`; this box is `0.24 d` high and seated
+ * at `0.032 d`, so its top is still inside the planet.
+ *
+ * Inside: explanation left, amount right, Claim twice its old pill width
+ * underneath, seated a little off the capsule floor. The button no longer
+ * carries what the money is — that lives next to the figure — so Refund,
+ * creator fee and prize share are one control. A wallet failure sits above
+ * the glass, in the same slot Command Center uses.
+ */
+.rewardConsole {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  height: calc(var(--earth-size) * 0.24);
+  bottom: calc(var(--earth-size) * 0.032);
+  gap: 0;
+  padding: calc(var(--earth-size) * 0.022) calc(var(--earth-size) * 0.038);
+  overflow: visible;
+}
+
+.rewardBody {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(6px, calc(var(--earth-size) * 0.014), 10px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.rewardRow {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(6px, calc(var(--earth-size) * 0.012), 10px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+.rewardTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: clamp(10px, calc(var(--earth-size) * 0.024), 18px);
+  min-height: 0;
+  flex: 1;
+}
+
+.rewardNote {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: clamp(0.62rem, calc(var(--earth-size) * 0.018), 0.82rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-text) 88%, var(--color-success));
+  text-shadow: 0 1px 8px #000000cc;
+}
+
+.rewardValue {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.28em;
+  font-size: clamp(1.7rem, calc(var(--earth-size) * 0.056), 2.7rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  color: var(--color-text);
+  text-shadow: 0 1px 10px #000000aa;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rewardFigure {
+  font-weight: 700;
+}
+
+.rewardTicker {
+  font-size: 0.36em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: inherit;
+}
+
+/*
+ * Twice the old auto-sized pill, seated a little higher than the capsule
+ * floor so the wave around an unclaimed control has room to breathe.
+ */
+.claimWrap {
+  position: relative;
+  align-self: center;
+  flex-shrink: 0;
+  width: min(11.5em, 70%);
+  margin-bottom: clamp(10px, calc(var(--earth-size) * 0.034), 22px);
+}
+
+.claimButton {
+  /* The busy sweep is clipped to this pill's own silhouette. */
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: clamp(32px, calc(var(--earth-size) * 0.058), 42px);
+  height: clamp(32px, calc(var(--earth-size) * 0.058), 42px);
+  padding: 0 1.25em;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 53%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-success) 82%, #ffffff) 0%,
+    var(--color-success) 42%,
+    color-mix(in srgb, var(--color-success) 62%, #04231a) 100%
+  );
+  color: #04231a;
+  font-size: clamp(0.62rem, calc(var(--earth-size) * 0.016), 0.78rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 #ffffff77,
+    inset 0 -1px 0 color-mix(in srgb, var(--color-success) 27%, #04231a),
+    0 10px 24px -12px color-mix(in srgb, var(--color-success) 67%, transparent);
+  transition:
+    filter 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * An expanding ring, only while Claim still wants a press. The class comes
+ * off the moment the button is in flight or already paid, and the rings
+ * also die on :active so the wave does not outlive the click itself.
+ */
+.claimPending::before,
+.claimPending::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-success) 60%, transparent);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--color-success) 33%, transparent);
+  pointer-events: none;
+  animation: claim-wave 2.2s ease-out infinite;
+}
+
+.claimPending::after {
+  animation-delay: 1.1s;
+}
+
+.claimPending:has(.claimButton:active)::before,
+.claimPending:has(.claimButton:active)::after,
+.claimPending:has(.claimButton:disabled)::before,
+.claimPending:has(.claimButton:disabled)::after {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes claim-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+
+.claimButton:hover:not(:disabled),
+.claimButton:focus-visible:not(:disabled) {
+  outline: none;
+  filter: brightness(1.06);
+  transform: translateY(-0.5px);
+  box-shadow:
+    inset 0 1px 0 #ffffff88,
+    0 14px 28px -12px color-mix(in srgb, var(--color-success) 80%, transparent);
+}
+
+.claimButton:disabled {
+  cursor: default;
+}
+
+/*
+ * Awaiting confirmation: still Claim, but not a second press. Distinct
+ * from `.claimSealed` so the two disabled states do not share a look.
+ */
+.claimAwaiting .claimButton,
+.claimAwaiting .claimButton:disabled {
+  cursor: progress;
+  transform: none;
+  filter: brightness(0.88);
+  box-shadow:
+    inset 0 1px 0 #ffffff44,
+    0 6px 16px -12px color-mix(in srgb, var(--color-success) 40%, transparent);
+}
+
+/*
+ * Paid out: pressed into the glass and closed, like a wax seal. No glow,
+ * no green CTA — a dashed outer stamp and a recessed pill so it reads as
+ * already taken rather than as a dimmer version of Claim.
+ */
+.claimSealed::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--color-border-strong) 67%, transparent);
+  pointer-events: none;
+}
+
+.claimSealed .claimButton,
+.claimSealed .claimButton:disabled {
+  cursor: default;
+  transform: none;
+  filter: none;
+  border: 1px solid #2a3548;
+  background:
+    linear-gradient(180deg, #141c2c 0%, #0b101c 55%, #080c16 100%);
+  color: var(--color-text-dim);
+  letter-spacing: 0.22em;
+  text-shadow: 0 1px 0 #00000088;
+  box-shadow:
+    inset 0 2px 8px #000000cc,
+    inset 0 0 0 1px #1c2638,
+    inset 0 0 0 3px #0a0f1a;
+}
+
+.rewardSealed .rewardNote {
+  color: color-mix(in srgb, var(--color-text-dim) 80%, transparent);
+}
+
+.rewardSealed .rewardValue {
+  color: var(--color-text-label);
+  text-shadow: none;
+}
+
+/*
+ * Phones. The globe is at its 320px floor and its cap is correspondingly
+ * shallow, so the capsule takes a slightly larger share of it — 68% by 22%,
+ * still inside ТЗ's bracket and still with planet past both ends. The
+ * proportions stay tied to the globe rather than to the viewport, because
+ * on a phone the globe is *narrower* than the screen and "100% minus a
+ * margin" would put the module over open sky on either side of it.
+ */
+@media (max-width: 640px) {
+  .console {
+    width: calc(var(--earth-size) * 0.74);
+    height: calc(var(--earth-size) * 0.24);
+    bottom: calc(var(--earth-size) * 0.035);
+    padding: 0 calc(var(--earth-size) * 0.04);
+  }
+
+  .rewardConsole {
+    height: calc(var(--earth-size) * 0.28);
+    bottom: calc(var(--earth-size) * 0.028);
+    padding: calc(var(--earth-size) * 0.028) calc(var(--earth-size) * 0.04);
+  }
+
+  .rewardValue {
+    font-size: clamp(1.45rem, calc(var(--earth-size) * 0.07), 2rem);
+  }
+
+  .rewardNote {
+    font-size: clamp(0.52rem, calc(var(--earth-size) * 0.018), 0.68rem);
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .readoutLabel {
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .defendDash {
+    animation: none;
+  }
+
+  /*
+   * Paused rather than `animation: none`: each band's place around the track
+   * is a negative `animation-delay` into these keyframes, so removing the
+   * animation would send both to offset 0 and pile the two colours into the
+   * same corner instead of leaving them opposite each other. Pausing also
+   * leaves the animation object in place, so the scan's `playbackRate` lands
+   * on something and changes nothing — a paused band stays paused.
+   */
+  .hudBand {
+    animation-play-state: paused;
+  }
+
+  .revealWaiting::before,
+  .revealWaiting::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .reconButton,
+  .defendButton,
+  .claimButton,
+  .claimPending::before,
+  .claimPending::after {
+    animation: none;
+    transition: none;
+  }
+
+  .claimPending::before,
+  .claimPending::after {
+    opacity: 0;
+  }
+}
+
+/*
+ * HUD skins — flip `COMMAND_HUD_SKIN` in `hudSkin.ts`.
+ *
+ * `classic` is the chamfered octagon (default look lives on `.console`).
+ * `orbit` is a bottom dock of connected chips. Copy stays inside a chip;
+ * nothing is drawn through the map or through the type.
+ */
+.classic {
+  /* Default look lives on `.console`. This class exists so the skin switch is a class, not a missing one. */
+}
+
+.orbit {
+  --dock-gap: 12px;
+  --dock-fill: #0a1018;
+  --dock-edge: color-mix(in srgb, var(--color-accent) 28%, #ffffff14);
+
+  bottom: calc(var(--earth-size) * 0.012);
+  width: calc(var(--earth-size) * 0.92);
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  align-items: stretch;
+  gap: var(--dock-gap);
+  padding: 0 4px 2px;
+}
+
+.orbit .spine {
+  display: none;
+}
+
+.orbit .readouts {
+  position: relative;
+  z-index: 3;
+  flex: 1 1 38%;
+  max-width: none;
+  min-width: 0;
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-edge);
+  border-radius: 12px;
+  padding: 10px 14px;
+  overflow: hidden;
+}
+
+.orbit .actions {
+  margin-left: 0;
+  gap: var(--dock-gap);
+  align-items: stretch;
+}
+
+.orbit .reconWrap,
+.orbit .defendWrap {
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-edge);
+  border-radius: 12px;
+  padding: 8px 10px;
+  overflow: visible;
+}
+
+.orbit .reconWrap::before,
+.orbit .defendWrap::before {
+  inset: 0;
+  border-radius: inherit;
+}
+
+.orbit .readouts::after,
+.orbit .reconWrap::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: var(--dock-gap);
+  height: 2px;
+  background: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.orbit[data-live='true'] .readouts,
+.orbit[data-live='true'] .reconWrap,
+.orbit[data-live='true'] .defendWrap {
+  border-color: color-mix(in srgb, var(--color-accent) 52%, #ffffff18);
+}
+
+.orbit[data-live='true'] .readouts::after,
+.orbit[data-live='true'] .reconWrap::after {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.orbit[data-scanning='true'] .reconWrap {
+  border-color: color-mix(in srgb, var(--color-accent-cool) 60%, #ffffff18);
+}
+
+.orbit .notice {
+  bottom: calc(100% + 10px);
+}
+
+.orbit.settled .settledNote {
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-edge);
+  border-radius: 12px;
+  padding: 12px 18px;
+}
+
+.orbit.rewardConsole {
+  height: auto;
+  min-height: 0;
+  bottom: calc(var(--earth-size) * 0.012);
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0 4px 2px;
+}
+
+.orbit.rewardConsole .rewardBody {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.orbit.rewardConsole .rewardRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) auto minmax(0, 0.85fr);
+  grid-template-areas: 'note claim value';
+  align-items: stretch;
+  gap: var(--dock-gap);
+  width: 100%;
+  height: auto;
+}
+
+.orbit.rewardConsole .rewardTop {
+  display: contents;
+}
+
+.orbit.rewardConsole .rewardNote,
+.orbit.rewardConsole .claimWrap,
+.orbit.rewardConsole .rewardValue {
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-edge);
+  border-radius: 12px;
+  padding: 12px 14px;
+  position: relative;
+}
+
+.orbit.rewardConsole .rewardNote {
+  overflow: hidden;
+}
+
+.orbit.rewardConsole .rewardNote {
+  grid-area: note;
+  display: flex;
+  align-items: center;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: clamp(0.68rem, calc(var(--earth-size) * 0.02), 0.84rem);
+  line-height: 1.3;
+  text-shadow: none;
+}
+
+.orbit.rewardConsole .claimWrap {
+  grid-area: claim;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+}
+
+.orbit.rewardConsole .rewardValue {
+  grid-area: value;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: clamp(1.05rem, calc(var(--earth-size) * 0.036), 1.55rem);
+  text-shadow: none;
+}
+
+.orbit.rewardConsole .rewardNote::after,
+.orbit.rewardConsole .claimWrap::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: var(--dock-gap);
+  height: 2px;
+  background: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+@media (max-width: 640px) {
+  .orbit {
+    width: calc(var(--earth-size) * 0.96);
+    bottom: calc(var(--earth-size) * 0.01);
+  }
+
+  .orbit.rewardConsole {
+    bottom: calc(var(--earth-size) * 0.01);
+  }
+
+  .orbit.rewardConsole .rewardRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'note value'
+      'claim claim';
+  }
+
+  .orbit.rewardConsole .rewardNote::after {
+    display: none;
+  }
+}
+
+/*
+ * The probe glyph's palette (`CommandIcons`).
+ *
+ * Here rather than on the SVG's own `stroke=` / `fill=` attributes because
+ * these marks have to carry theme tokens, and `var()` in an SVG
+ * presentation attribute is not reliably substituted — where it is not, the
+ * declaration is dropped and the mark falls back to black. `stop-color`,
+ * `stroke` and `fill` are all real CSS properties, so a class delivers them
+ * everywhere.
+ */
+.probeStopSoft {
+  stop-color: var(--color-accent-soft);
+}
+
+.probeStopAccent {
+  stop-color: var(--color-accent);
+}
+
+.probeDish {
+  stroke: var(--color-accent);
+}
+
+.probeDishRim {
+  stroke: var(--color-accent-cool);
+}
+
+.probeTip {
+  fill: var(--color-accent-soft);
+}
+
+/* The body — the one warm mark in the set, so the sensor reads as hardware
+   rather than as more of the same beam. */
+.probeBody {
+  fill: var(--color-warning);
+  stroke: var(--color-warning-pale);
+}

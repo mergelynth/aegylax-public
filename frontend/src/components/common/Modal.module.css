@@ -1,0 +1,136 @@
+/*
+ * The scrim's entrance (its exit is Motion's — see `Modal.tsx`).
+ *
+ * `backwards` so the fill is applied before the first frame: without it the
+ * wash is briefly at full strength, which is a flash of black over the page
+ * on every open.
+ */
+.overlay {
+  animation: modal-scrim 180ms ease-out backwards;
+  position: fixed;
+  inset: 0;
+  background: #02040acc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+@keyframes modal-scrim {
+  from {
+    opacity: 0;
+  }
+}
+
+.dialog {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  /*
+   * Reserved so a dialog that grows past the viewport doesn't shift its
+   * content sideways as the scrollbar appears.
+   */
+  scrollbar-gutter: stable;
+}
+
+/*
+ * Firefox, which has no ::-webkit-scrollbar equivalent. Scoped behind
+ * @supports on purpose: Chromium implements both, and setting the
+ * standard properties there makes it ignore the pseudo-element rules
+ * below and fall back to an overlay scrollbar.
+ */
+@supports not selector(::-webkit-scrollbar) {
+  .dialog {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
+/*
+ * The default scrollbar is light OS chrome pasted onto a dark panel. This
+ * is the same slim, glassy treatment the fields use: an invisible track, a
+ * rounded thumb inset from the panel edge, accent on hover.
+ *
+ * Colours are literal rather than `var(--color-*)`: custom properties do
+ * not resolve inside ::-webkit-scrollbar pseudo-elements, and a `var()`
+ * that fails to substitute takes the whole declaration with it — which is
+ * exactly how you end up with an invisible thumb. Values mirror
+ * --color-border-strong / --color-accent / --color-accent-alt, and are the
+ * one place in the app that has to be re-copied when the theme moves.
+ */
+.dialog::-webkit-scrollbar {
+  width: 12px;
+}
+
+.dialog::-webkit-scrollbar-track {
+  background-color: transparent;
+  /* Keeps the thumb clear of the panel's rounded corners. */
+  margin: 18px 0;
+}
+
+.dialog::-webkit-scrollbar-thumb {
+  background-color: #265464;
+  border-radius: 999px;
+  /* Transparent border + padding-box clip = a 6px thumb with breathing room. */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.dialog::-webkit-scrollbar-thumb:hover {
+  background-color: #43e6e0;
+}
+
+.dialog::-webkit-scrollbar-thumb:active {
+  background-color: #7ef2ec;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-panel);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0;
+  margin-right: auto;
+}
+
+.accessory {
+  display: flex;
+  align-items: center;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.closeButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*
+ * ТЗ §17 — the dialog still opens, it just stops travelling. Motion's half
+ * is declined in `Modal.tsx` (a reduced-motion open has no origin to come
+ * from, so it scales in place), and this is the stylesheet's half.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+  }
+}

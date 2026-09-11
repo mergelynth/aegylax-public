@@ -1,0 +1,27 @@
+/*
+ * Joining, and what happened when it did not.
+ *
+ * The wrapper exists only so the failure can sit under the control that
+ * caused it. Before this, `join.error` was held in the hook and rendered
+ * nowhere at all: a join that the chain refused — a simulation that failed
+ * against a rate-limited endpoint, a wallet with no gas, a deadline that
+ * passed between the read and the press — left the button snapping back to
+ * "Join Defense" with no message anywhere on the page, which is the exact
+ * shape of "I clicked and nothing happened".
+ */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.error {
+  margin: 0;
+  max-width: 44ch;
+  text-align: center;
+  font-size: var(--text-sm, 0.85rem);
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-danger) 56%, #fff0f2);
+  text-shadow: 0 1px 6px #000000cc;
+}

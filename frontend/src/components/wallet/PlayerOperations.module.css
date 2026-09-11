@@ -1,0 +1,167 @@
+/*
+ * The wallet's own operations, in the same language as the record above it:
+ * a hairline horizon under a tracked label, surfaces that are a whisper of a
+ * gradient rather than a bordered card.
+ *
+ * Rows here are quieter than the directory's. That page is a place somebody
+ * chooses from and its rows are the content; this is a shortcut back to
+ * somewhere they have already been, under an address they came to copy.
+ */
+.operations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent-cool) 16%, transparent);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+  white-space: nowrap;
+}
+
+.heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-accent-cool) 26%, transparent),
+    transparent
+  );
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid #ffffff0f;
+  background: linear-gradient(180deg, #ffffff0a, #ffffff03);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.row:hover,
+.row:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: linear-gradient(180deg, #ffffff12, #ffffff05);
+}
+
+.dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+/* Open is the accent — it is the state somebody can still act on. In flight
+   is the cool tone the rest of the interface uses for a round under way. */
+.open {
+  background: var(--color-accent);
+  box-shadow: 0 0 7px -1px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+
+/*
+ * In flight, and saying so. The attack in one of these operations is
+ * actually moving while the panel is open, and a still dot beside "in
+ * flight" is the one state on this list that is lying about itself.
+ *
+ * Slow — one breath every 2.6 seconds — and drawn entirely in the glow
+ * rather than in the dot: a dot that changes size is a control asking to be
+ * pressed, where a mark that pulses light is a reading. The `open` state
+ * above it stays lit and still, which is what keeps the two legible as
+ * different things.
+ */
+.active {
+  background: var(--color-accent-cool);
+  animation: operation-in-flight 2600ms ease-in-out infinite;
+}
+
+@keyframes operation-in-flight {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-cool) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 9px 0 color-mix(in srgb, var(--color-accent-cool) 85%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .active {
+    animation: none;
+  }
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state {
+  flex: none;
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--color-text-dim);
+}
+
+.sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+}
+
+.browse {
+  margin-left: auto;
+  color: var(--color-accent-cool);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.browse:hover,
+.browse:focus-visible {
+  text-decoration: underline;
+}

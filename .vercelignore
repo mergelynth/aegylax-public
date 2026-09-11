@@ -1,0 +1,30 @@
+# What Vercel must not look at.
+#
+# `api/` is the NestJS backend, and it is here because Vercel's zero-config
+# treats a root-level `api/` as Serverless Functions: it found the 19 files
+# in it and tried to build each one as its own handler. They are Nest
+# modules and services — no default export, no request signature — so the
+# build finished, "Deploying outputs..." was printed, and the deployment
+# failed there. Every deployment to this project had been failing that way,
+# with a build log that ends in success.
+#
+# The app itself never imports it. The frontend *test* suite does — the
+# directory fold in `api/indexer/lobbies` is exercised from
+# `tests/unit/lobbyDirectory.test.ts` — so the deploy typechecks
+# `tsconfig.build.json`, which is the app without its tests. Tests are still
+# typechecked, by `npm run typecheck`. The backend is deployed from this
+# same repository by Render, from its own `npm run api:build`.
+/api
+
+# Leading slash on every line, and that is load-bearing. This file uses
+# gitignore matching, so a bare `contracts/` matches a directory of that
+# name at ANY depth — including `frontend/src/contracts/`, which holds
+# `addresses.ts` and the generated deployment manifest. Writing it unanchored
+# deleted the app's own contract config and failed the build with eleven
+# `Cannot find module '../contracts/addresses'`.
+#
+# Server-only, and never part of the SPA. `contracts/out` is absent on
+# Vercel anyway — `prebuild.mjs` says so and falls back to the committed
+# `frontend/src/contracts/generated/`, which is the intended path there.
+/contracts
+/dist-server

@@ -1,0 +1,288 @@
+/*
+ * The operation's identity, sitting directly on the space scene like the
+ * Home hero's title — so it needs the hero's type scale and its dark
+ * text-shadow, not a card heading's.
+ */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * The name and the share control on one line. `baseline` alignment rather
+ * than `center`: the button is a fraction of the title's height, and
+ * centring it on a hero-scale line would leave it floating in the middle of
+ * the letterforms instead of sitting beside the word.
+ */
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--text-hero);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: var(--color-text);
+  text-shadow: 0 4px 30px #000000cc;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* The hash is a technical readout, so it takes the mono face and a size
+   well below the name it belongs to. */
+.id {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+/*
+ * A frosted pill rather than an outlined chip: over the moving star field
+ * a transparent border alone leaves the status hard to read.
+ */
+.status {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #ffffff1f;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg) 88%, transparent), color-mix(in srgb, var(--color-bg) 74%, transparent));
+  /*
+   * No `backdrop-filter`, for the reason `ApocalypseTimer` spells out and
+   * `EarthSphere` names this surface in: a backdrop blur is recomputed
+   * whenever what is *behind* it changes, and what is behind this is the
+   * spinning planet. The blur was being re-run for every step of Earth's
+   * rotation, forever, on the screen a player sits on for a whole round.
+   *
+   * It was also buying almost nothing. The gradient below already stops
+   * most of the scene, so the blur was working on the remainder — the same
+   * arithmetic that took it off the Home screen's pills. The opacity is
+   * raised a little to cover the difference, which costs nothing per frame.
+   */
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+/*
+ * Share. A quiet round glyph next to the title — an operation is something
+ * you invite people to, but the screen's accent belongs to joining it, so
+ * this earns its place by being adjacent to the name rather than by being
+ * loud.
+ */
+.share {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.shareButton {
+  pointer-events: auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #ffffff26;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg) 88%, transparent), color-mix(in srgb, var(--color-bg) 74%, transparent));
+  /*
+   * No `backdrop-filter`, for the reason `ApocalypseTimer` spells out and
+   * `EarthSphere` names this surface in: a backdrop blur is recomputed
+   * whenever what is *behind* it changes, and what is behind this is the
+   * spinning planet. The blur was being re-run for every step of Earth's
+   * rotation, forever, on the screen a player sits on for a whole round.
+   *
+   * It was also buying almost nothing. The gradient below already stops
+   * most of the scene, so the blur was working on the remainder — the same
+   * arithmetic that took it off the Home screen's pills. The opacity is
+   * raised a little to cover the difference, which costs nothing per frame.
+   */
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.shareButton:hover,
+.shareButton:focus-visible {
+  outline: none;
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  box-shadow: 0 0 16px -4px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.shareButton:active {
+  transform: translateY(1px);
+}
+
+/*
+ * While "Link copied" is up: the control itself confirms, not only the
+ * toast. Grey so it reads as done, green mark so the press is not silent
+ * if the toast is missed.
+ */
+.shareButtonCopied,
+.shareButtonCopied:hover,
+.shareButtonCopied:focus-visible {
+  color: #6b7280;
+  border-color: #ffffff18;
+  background: linear-gradient(180deg, #2a2e38cc, #1a1d24d9);
+  box-shadow: none;
+}
+
+.shareCopiedMark {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  color: var(--color-success);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-success) 60%, transparent));
+  pointer-events: none;
+}
+
+.shareIcon {
+  width: 17px;
+  height: 17px;
+}
+
+/*
+ * The confirmation. Absolutely positioned so it cannot reflow the title
+ * row when it appears — a hero heading that shifts sideways on a copy
+ * would be a worse bug than the silence it is fixing.
+ *
+ * It wears the header status ring's popover skin rather than a pill,
+ * and the difference is the point: a pill is what the *status* chip beside
+ * it already is, so a second one two lines down read as another piece of
+ * lobby state rather than as an answer to the press. A panel with an arrow
+ * pointing back at the button it came from can only be read one way — this
+ * is what that control just did.
+ */
+.shareToast {
+  position: absolute;
+  /*
+   * Above the button, not below it — and the arrow points down.
+   *
+   * Below is where this belongs by convention and it is the one place it
+   * cannot go. The next row down is `.meta`, which is centred and carries
+   * the status chip, and the toast landed straight on `OPEN` — covering the
+   * exact chip this panel was restyled to be told apart from.
+   *
+   * Nudging it sideways does not fix that, which is worth recording so it is
+   * not retried: `.meta` is centred on the *header*, while the share button
+   * sits at the right end of a centred *title row*, so their overlap is a
+   * function of how much wider the meta row is than the title. A long title
+   * clears it and a short one does not. Measured, with the title "Aegis",
+   * the toast still landed on the chip from every horizontal anchor.
+   *
+   * Above the button there is nothing to hit from any title length: the
+   * button is to the right of the title text, so the space over it is empty
+   * sky. The stalk still ties the panel to the control that produced it,
+   * which is what the header's status popover does — mirrored, because that
+   * one hangs below its trigger and this one cannot.
+   */
+  bottom: calc(100% + 10px);
+  left: 0;
+  transform: translateY(4px);
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-panel);
+  box-shadow: 0 20px 50px -20px #000000e6;
+  /* 90%-opaque panel colour: a blur behind it is invisible and still costs
+     a backdrop snapshot per frame. See `.body` in LobbySidePanel. */
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-text);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  z-index: 5;
+}
+
+/*
+ * The stalk that ties the panel back to the button it came from, drawn the
+ * same way the status popover's is: one triangle in the border colour.
+ *
+ * One rather than the usual two-triangle sandwich, and the panel's own fill
+ * is why. `--color-bg-panel` is deliberately translucent — the panel is a
+ * frosted surface over a moving star field — so an inner triangle painted in
+ * it would let the border triangle show straight through and read as a
+ * muddy double edge rather than as a hairline. At this size a solid arrow in
+ * the border colour is what the eye reads as the panel's own corner anyway.
+ */
+.shareToast::after {
+  content: '';
+  position: absolute;
+  /* On the underside, because the panel sits above its button — see above. */
+  top: 100%;
+  /* 17px is the centre of the 34px button the panel's left edge is aligned
+     to — the arrow points at the control, not at the middle of the panel. */
+  left: 17px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-border-strong);
+}
+
+/* A copy that did not happen is the one case worth colouring — everything
+   else about the panel stays neutral. */
+.shareToastFailed {
+  color: var(--color-danger);
+}
+
+.shareToastVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shareButton,
+  .shareToast {
+    transition: none;
+  }
+}
+
+/* Only the lifecycle states a player can act on take a colour. */
+.open {
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+}
+
+.ready {
+  color: var(--color-accent-quiet);
+  border-color: color-mix(in srgb, var(--color-accent-quiet) 40%, transparent);
+}
+
+.active {
+  color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+}

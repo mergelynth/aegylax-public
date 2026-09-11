@@ -1,0 +1,206 @@
+/*
+ * The values below are the *default* provider theme (Fhenix), written out
+ * statically rather than left to JavaScript.
+ *
+ * `theme/ProviderThemeProvider` sets exactly these custom properties on
+ * `:root` at mount, from the theme the deployment's confidential engine
+ * implies. Keeping the default theme's values here too means the first paint
+ * is already correct for the deployment almost every build is — so there is
+ * no flash of one palette resolving into another — and a build whose
+ * JavaScript has not run yet still looks like the product.
+ *
+ * The source of truth is `src/theme/themes/fhenix.ts`. If these disagree,
+ * that file wins the moment React mounts; `src/tests/unit/theme.test.ts`
+ * checks they do not disagree.
+ */
+:root {
+  --color-bg: #03080c;
+  --color-bg-panel: #06161fe6;
+  --color-bg-panel-alt: #0a2029cc;
+  --color-border: #16323d;
+  --color-border-strong: #265464;
+  --color-text: #eaf3f5;
+  --color-text-dim: #7c939c;
+  --color-accent: #43e6e0;
+  --color-accent-alt: #7ef2ec;
+  /* The accent at -18% saturation: accented *information* rather than an
+     invitation to press. Keeps the CTA the loudest thing on the page. */
+  --color-accent-muted: #52d7d2;
+  /* The pale end of the accent ramp — encrypted-state labels, cipher blocks. */
+  --color-accent-soft: #b9f7f3;
+  /* A second, cooler accent for technical readouts. Used sparingly, on purpose. */
+  --color-accent-cool: #5fb6d8;
+  /* Ink on the primary button — navy, because this theme's CTA is a cyan surface. */
+  --color-cta-text: #04191f;
+  --color-danger: #ff5f6e;
+  --color-success: #2fd9a0;
+  --color-warning: #e8a33d;
+
+  /*
+   * The pale ends of the three semantic ramps.
+   *
+   * Derived here rather than carried in the theme objects, because they are
+   * not choices — they are each semantic colour walked toward white by a
+   * fixed amount, which is what a highlight, a rim or a small label on that
+   * colour needs. Deriving them means a provider states three colours and
+   * gets nine, and that a stylesheet wanting "a lighter danger" names one
+   * instead of mixing its own and drifting from everyone else's.
+   *
+   * They are not emitted by `themeCssVariables`, so they are not part of
+   * the theme's contract — a theme that wants different pale ends changes
+   * the colour these are built from.
+   */
+  --color-success-pale: color-mix(in srgb, var(--color-success) 62%, #e6fff4);
+  --color-warning-pale: color-mix(in srgb, var(--color-warning) 86%, #fff6e0);
+  --color-danger-pale: color-mix(in srgb, var(--color-danger) 66%, #fff0f2);
+  /* The same move on the cool accent — technical readouts that need to sit
+     above their own colour rather than beside it. */
+  --color-cool-pale: color-mix(in srgb, var(--color-accent-cool) 74%, #e2f6ff);
+
+  /*
+   * One step quieter than `--color-accent-muted`, for small status chrome —
+   * a phase chip, a pill, a 16px mark.
+   *
+   * It leans on the dim text colour rather than desaturating further,
+   * because at that size the thing that reads as "quiet" is lower contrast
+   * against the panel, not lower saturation. Third and last rung: anything
+   * needing a fourth is not an accent, it is text.
+   */
+  --color-accent-quiet: color-mix(in srgb, var(--color-accent-muted) 76%, var(--color-text-dim));
+
+  /*
+   * The light half of the theme — paper, for the passages of How to Play
+   * that are read rather than played. Nothing switches into these; a
+   * handful of documentation surfaces opt in by name.
+   */
+  --light-bg: #f4f7f7;
+  --light-bg-alt: #ffffff;
+  --light-text: #061722;
+  --light-text-dim: #60707a;
+  --light-border: #d7e0e2;
+  --light-accent: #0b8285;
+
+  /*
+   * Multi-stop fills, as tokens rather than as literals in five component
+   * stylesheets. A provider theme changes a gradient's *stops and shape*
+   * together, which is the part of its visual language a single accent
+   * colour cannot carry.
+   */
+  --gradient-cta: linear-gradient(135deg, #43e6e0 0%, #6ff0ea 100%);
+  --gradient-brand: linear-gradient(135deg, #f4fafb, #dbeeee);
+  --gradient-atmosphere: radial-gradient(ellipse 80% 50% at 50% -10%, #07303d59, transparent);
+  --gradient-scene: radial-gradient(ellipse 90% 60% at 50% -10%, #08394859, transparent 70%);
+
+  /* Separators drawn *over* the space scene, where --color-border is too dark to see. */
+  --border-hairline: #ffffff14;
+  --border-accent: #43e6e0;
+
+  --shadow-cta: 0 10px 26px -14px #43e6e07a;
+  /* Earth's atmospheric halo in the hero. Deliberately at the edge of visible. */
+  --glow-planet: 0 0 26px 2px #7fe4f01f;
+  --glow-panel: 0 10px 28px -12px #00070bd9;
+
+  /* Labels — field names, section titles, stat captions. Defined here
+     because the same treatment has to hold across the Home hero, Defense
+     Setup and the Operation screen. */
+  --color-text-label: #9db4bc;
+
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Technical readouts (block/epoch numbers, hashes) — never body text. */
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, 'Roboto Mono', monospace;
+
+  /*
+   * One type scale for the whole product (spec §10: one shell, two states).
+   * The Home hero, the Defense Setup dialog and the Operation screen all
+   * draw their headings from these four roles rather than each picking its
+   * own size, so a title never means one thing on one screen and something
+   * else on the next:
+   *
+   *   --text-hero      the screen's own title       ("SOMETHING IS COMING", "Operation 0x…")
+   *   --text-hero-sub  the line that explains it
+   *   --text-hero-tag  the accented call to action
+   *   --text-panel     a panel/dialog title         ("Defense Setup", "Operation Details")
+   *   --text-label     a field or section label     ("Min players", "Status")
+   */
+  --text-hero: clamp(1.6rem, 4.4vw, 2.6rem);
+  --text-hero-sub: clamp(0.9rem, 1.8vw, 1.05rem);
+  --text-hero-tag: clamp(0.82rem, 1.5vw, 0.92rem);
+  --text-panel: 1.1rem;
+  --text-label: 0.72rem;
+  --tracking-label: 0.04em;
+
+  /*
+   * Heading treatment as tokens, so the hero and the panel titles get the
+   * same weight and tracking from one place — and so a provider theme can
+   * tune them without a component knowing it happened.
+   */
+  --weight-heading: 800;
+  --tracking-heading: 0.015em;
+  /* Small uppercase mono labels — status readouts, encrypted-state chips. */
+  --tracking-mono: 0.14em;
+
+  /* The Operation details drawer's width. Shared, because the playfield has
+     to give the drawer its space rather than let it cover sectors the
+     player is expected to click. */
+  --lobby-panel-width: min(380px, 92vw);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    var(--gradient-atmosphere),
+    var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: white;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

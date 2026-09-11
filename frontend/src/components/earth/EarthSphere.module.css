@@ -1,0 +1,548 @@
+/*
+ * `--anchor-x` / `--anchor-y` are this element's resting transform, split
+ * into two named parts so a rule further down can move one axis without
+ * restating the other — `.wrapHero` shifts the globe below the fold by
+ * setting `--anchor-y` alone, and the centering survives.
+ *
+ * The page-load entrance (`boot-earth`, ТЗ §18) no longer has a stake in
+ * them: the planet arrives on opacity alone, so nothing in `app/motion.css`
+ * touches this transform any more. The same pattern still carries the
+ * countdown's settle, which does — see `ApocalypseTimer.module.css`.
+ */
+
+.wrap {
+  position: absolute;
+  left: 50%;
+  bottom: -29%;
+  width: 55%;
+  aspect-ratio: 1 / 1;
+  --anchor-x: -50%;
+  --anchor-y: 0%;
+  transform: translate(var(--anchor-x), var(--anchor-y));
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 38% 32%, #6fa8ff 0%, #2c5fb8 38%, #14305f 65%, #071731 85%);
+  box-shadow:
+    0 0 0 1px #ffffff14,
+    0 0 90px 12px color-mix(in srgb, var(--color-accent-cool) 24%, transparent),
+    inset -60px -60px 120px #00040dcc;
+  z-index: 2;
+}
+
+.wrapHero {
+  width: clamp(320px, 46vw, 680px);
+  bottom: 0;
+  --anchor-y: 60%;
+  /* Size container so slice `translateZ` can be `50cqmin` = the disc radius. */
+  container-type: size;
+  /*
+   * What is behind the texture, graded to match it.
+   *
+   * The panel variant paints its planet *with* this gradient, so it is a
+   * lit blue sphere; here it is only ever seen through the hairline seams
+   * between longitude slices, and at some rotation angles through a wider
+   * gap where the cylinder does not quite close. Bright blue against the
+   * graded globe made those seams read as damage. Deep navy, on the same
+   * ramp the grade lands open water on, makes the same gap read as ocean.
+   */
+  background: radial-gradient(circle at 38% 32%, #0e3049 0%, #09203a 38%, #06182d 66%, #030e1c 86%);
+  /*
+   * The rim — the only place the provider's colour reaches Earth (ТЗ §10),
+   * and the outward half of the atmosphere.
+   *
+   * Four layers, none of them loud: a hairline that catches the accent, a
+   * tight bloom just outside it so the edge does not sit on the starfield
+   * like a cut-out, the theme's own planet halo, and a wide, nearly
+   * invisible cool wash that carries the silhouette at reading distance.
+   * The inward half is `.atmosphere`, which has to be an element rather
+   * than an inset shadow here: the disc clips its children and paints them
+   * over anything this box draws inside itself.
+   */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, #ffffff10),
+    0 0 12px 1px color-mix(in srgb, var(--color-accent) 13%, transparent),
+    var(--glow-planet),
+    0 0 96px 10px color-mix(in srgb, var(--color-accent-cool) 7%, transparent),
+    inset -26px -26px 58px #00030a44;
+
+  /*
+   * The globe's colour grade is not here any more, and not in `.slice`
+   * either — it is baked into the texture by
+   * `tools/assets/bake-earth-grade.py`, which is where the four stages, the
+   * numbers and the reasoning for each of them now live. Re-run it to
+   * re-tune the planet; there is nothing to change in this file.
+   *
+   * It moved because a grade that never changes was being recomputed sixty
+   * times a second. See the comment on `.slice`.
+   */
+}
+
+.surface {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse 20% 12% at 28% 38%, #ffffff2e, transparent 72%),
+    radial-gradient(ellipse 16% 24% at 62% 60%, #0006, transparent 72%),
+    radial-gradient(ellipse 24% 10% at 72% 22%, #ffffff20, transparent 72%),
+    radial-gradient(ellipse 14% 18% at 40% 78%, #0005, transparent 72%),
+    repeating-linear-gradient(76deg, #ffffff0d 0 8px, transparent 8px 64px);
+  mix-blend-mode: overlay;
+  /*
+   * Stepped for the same reason as `.sphere`, and with more to gain:
+   * `mix-blend-mode: overlay` means this layer cannot be composited at all,
+   * so every frame of the turn is a blend of the whole disc against its
+   * backdrop. 2640 steps over 110s is 24 a second and 0.16 degrees each —
+   * well under a pixel on soft radial gradients that have no edge to step.
+   */
+  animation: rotate 110s steps(2640, end) infinite;
+}
+
+/*
+ * ТЗ §6 — CSS 3D globe (not a 3D engine).
+ *
+ * Perspective lives on this stage so the longitude slices compose in 3D,
+ * then flatten onto `.wrap` and clip to the circular disc. Overflow stays
+ * on `.wrap`, not here: `overflow` on a preserve-3d element would flatten
+ * the slices before they wrap around the axis.
+ */
+.stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1100px;
+  perspective-origin: 50% 48%;
+  transform-style: preserve-3d;
+}
+
+/*
+ * The spinning group. Local Y is Earth's polar axis: keyframes turn
+ * `rotateY` a full −360°, with the real 23.5° obliquity and a small
+ * side-on elevation applied around it via CSS variables from EarthSphere.
+ *
+ * Still a compositor `transform` — no paint, no JavaScript per frame.
+ * Wall-clock sync is a negative `animation-delay` set once at mount.
+ */
+.sphere {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+  animation-name: earth-spin;
+  /*
+   * Stepped, not `linear` — and the two are indistinguishable here.
+   *
+   * The planet turns once in 600s: 0.6 degrees per second. At 60fps that is
+   * a hundredth of a degree per frame, which on a 600px disc moves the rim
+   * by 0.03px — motion the display cannot show and the eye cannot see, and
+   * it is not free. Since the grade was baked into the texture the spin is
+   * a genuinely composited transform, so the slices themselves are cheap;
+   * what is not cheap is everything above them. `backdrop-filter` samples
+   * the scene as composited, so a planet that moves — by any amount, seen
+   * or unseen — invalidates the backdrop of every glass surface over it and
+   * makes each one re-blur. On the Operation screen that is the console,
+   * the drawer tab and the header chips, once per frame, forever.
+   *
+   * 9000 steps over the period is 15 steps a second, 0.04 degrees each, and
+   * 0.2px at the rim: below a device pixel, so most steps rasterise
+   * identically to the one before. The turn looks the same and costs a
+   * quarter of the frames. Coarser than this (a few steps a second) is not
+   * a slower spin — it is a globe that jumps.
+   *
+   * This is not the ~8fps rAF loop this animation replaced. That one was
+   * janky because it stepped the *texture* from JavaScript, competing with
+   * the page for the main thread at 120ms granularity; this is still one
+   * declarative animation on a promoted layer, only sampled coarsely enough
+   * to stop asking for redraws nobody can see.
+   */
+  animation-timing-function: steps(9000, end);
+  animation-iteration-count: infinite;
+}
+
+.slice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  /* Chord of one longitude sector, plus a hair of overlap to hide seams. */
+  width: calc(100% * sin(180deg / var(--globe-slices, 16)) * 1.02);
+  background-image: url('/assets/earth/earth.webp');
+  background-repeat: no-repeat;
+  background-size: calc(var(--globe-slices, 16) * 100%) 100%;
+  /* No `filter` here, and that is the point.
+     The source is a flat, unlit diffuse map, so it does need grading -- but the grade never changes,
+     and it used to be re-applied on every frame of the spin. `brightness()`/`contrast()`/`saturate()`
+     are composited; `url(#earth-cool)`, the channel mixer beside them, is not, and one reference
+     filter takes the whole chain onto the main thread. Sixteen slices meant sixteen SVG colour-matrix
+     passes per frame, on the largest element on the page, plus a dirty backdrop under every
+     `backdrop-filter` in the app.
+     It is baked into the texture instead -- `tools/assets/bake-earth-grade.py`, which also holds the
+     numbers and the reasoning behind them. `public/assets/earth/earth.webp` is that script's output;
+     `tools/assets/earth.source.webp` is the ungraded map and the only copy of it.
+     The .terminatorHero layer below still supplies the directional night-side shadow, so the planet
+     reads as lit from one side rather than as a flat sticker. */
+  backface-visibility: hidden;
+}
+
+@keyframes earth-spin {
+  from {
+    transform: rotateX(var(--earth-elev, 8deg)) rotateZ(var(--earth-tilt, -23.5deg)) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(var(--earth-elev, 8deg)) rotateZ(var(--earth-tilt, -23.5deg)) rotateY(-360deg);
+  }
+}
+
+.terminator {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at 72% 68%, transparent 46%, #00051299 82%);
+}
+
+/* Weaker and tighter-falloff than the panel variant's terminator — enough to keep a natural night
+   side without washing the real texture out into a hazy gradient, and held back far enough that it
+   shades the grade above rather than eating it back. */
+.terminatorHero {
+  background: radial-gradient(circle at 74% 70%, transparent 58%, #00030a3d 82%);
+}
+
+/*
+ * The atmosphere's inward half — the thin cyan limb (ТЗ §3).
+ *
+ * It is one radial gradient that is transparent across almost the whole
+ * disc and only lifts in the last few percent of the radius, so it reads as
+ * air catching light at the edge rather than as a ring drawn on top of a
+ * planet. The stops are in `closest-side` units on purpose: the default
+ * `farthest-corner` would put the disc's edge at 71% of the gradient and
+ * every number here would stop meaning what it says.
+ *
+ * Above the terminator, so the limb stays lit all the way round — an
+ * atmosphere seen from space does, and dimming it on the night side made
+ * the planet look like it had a chip out of it.
+ */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle closest-side,
+    transparent 84%,
+    color-mix(in srgb, var(--color-accent-cool) 9%, transparent) 94%,
+    color-mix(in srgb, var(--color-accent) 24%, transparent) 99.2%,
+    transparent 100%
+  );
+}
+
+/*
+ * A result owns the rim while it is on screen. The shield and the impact
+ * ring are the two things allowed to be loud around this planet, and a cyan
+ * limb under a green shell reads as a third colour nobody asked for.
+ */
+.defended .atmosphere,
+.struck .atmosphere {
+  opacity: 0.3;
+}
+
+/*
+ * The planet's surface layer — markers, instrument marks, connections and
+ * the cursor's magnetic field — lives in `SurfaceSignals.module.css`
+ * alongside the component that owns it (ТЗ §19-§23). It moved out of this
+ * file when it stopped being three static rules and became a system.
+ */
+
+/*
+ * The result effects' anchor: exactly the globe's box, minus the
+ * `overflow: hidden` that keeps the texture inside the circle. Every ring
+ * below is sized in percentages of this, so they stay concentric with the
+ * planet at any viewport width.
+ */
+.effects {
+  position: absolute;
+  left: 50%;
+  bottom: -29%;
+  width: 55%;
+  aspect-ratio: 1 / 1;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.effectsHero {
+  width: clamp(320px, 46vw, 680px);
+  bottom: 0;
+  transform: translate(-50%, 60%);
+}
+
+/* Tints the planet itself with the result colour without hiding the texture (ТЗ §12.1, §13.2). */
+.wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: color;
+  transition: background 0.5s ease;
+}
+
+.defended {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-success) 26%, transparent),
+    0 0 70px 10px color-mix(in srgb, var(--color-success) 19%, transparent),
+    inset -18% -18% 36% #00120a80;
+}
+
+.defended .wash {
+  background: color-mix(in srgb, var(--color-success) 40%, transparent);
+}
+
+.struck {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-danger) 31%, transparent),
+    0 0 70px 10px color-mix(in srgb, var(--color-danger) 22%, transparent),
+    inset -18% -18% 36% #1a000480;
+}
+
+.struck .wash {
+  background: color-mix(in srgb, var(--color-danger) 40%, transparent);
+}
+
+/*
+ * The outer halo — the wide one, well clear of the rim.
+ *
+ * It is a *moment*, not a state. The reveal is the one instant the result
+ * arrives, and this is the flare that announces it: it blooms once and then
+ * dissolves in place, leaving the tight shell around the planet to carry
+ * the verdict from then on. Two permanent glows at two radii read as a
+ * design that could not decide; one permanent glow plus one burst reads as
+ * something having just happened.
+ *
+ * It also ends at `opacity: 0` rather than lingering faintly, which takes a
+ * full-viewport-width gradient permanently out of the compositor once the
+ * flare is over.
+ */
+.aura {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 190%;
+  height: 190%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  animation: aura-burst 2.6s ease-out forwards;
+}
+
+.shieldAura {
+  background: radial-gradient(circle, transparent 52%, color-mix(in srgb, var(--color-success) 12%, transparent) 66%, transparent 78%);
+}
+
+.impactAura {
+  background: radial-gradient(circle, transparent 50%, color-mix(in srgb, var(--color-danger) 15%, transparent) 62%, transparent 76%);
+}
+
+/*
+ * ТЗ §12.2-12.4 — an activated energy shell: a bright ring with a faceted
+ * inner glow that expands once from the rim and settles, then breathes.
+ */
+.shield {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-success) 80%, transparent);
+  box-shadow:
+    0 0 30px 6px color-mix(in srgb, var(--color-success) 30%, transparent),
+    inset 0 0 40px 8px color-mix(in srgb, var(--color-success) 20%, transparent);
+  background: radial-gradient(circle, transparent 58%, color-mix(in srgb, var(--color-success) 18%, transparent) 88%, transparent 100%);
+  animation: shield-raise 1.15s cubic-bezier(0.16, 0.9, 0.3, 1) both, shield-breathe 3.4s ease-in-out 1.15s infinite;
+}
+
+/* A second, thinner front leaving slightly later — reads as a wave passing through the shell rather than one ring scaling up. */
+.shieldEcho {
+  border-width: 1px;
+  border-color: color-mix(in srgb, color-mix(in srgb, var(--color-success) 62%, #dff7ee) 55%, transparent);
+  background: none;
+  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--color-success) 22%, transparent);
+  animation: shield-wave 1.6s cubic-bezier(0.16, 0.9, 0.3, 1) 0.28s both;
+}
+
+/*
+ * ТЗ §13.3-13.4 — deliberately not the shield. It starts *large* and
+ * slams inward onto the planet, then throws one hard ring back out: an
+ * impact, not a barrier coming up.
+ */
+.impact {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--color-danger) 80%, transparent);
+  box-shadow:
+    0 0 34px 8px color-mix(in srgb, var(--color-danger) 28%, transparent),
+    inset 0 0 30px 6px color-mix(in srgb, var(--color-danger) 20%, transparent);
+  animation: impact-strike 0.62s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+.impactEcho {
+  border-width: 2px;
+  border-color: color-mix(in srgb, color-mix(in srgb, var(--color-danger) 62%, #dff7ee) 56%, transparent);
+  box-shadow: 0 0 22px 4px color-mix(in srgb, var(--color-danger) 20%, transparent);
+  animation: impact-shockwave 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) 0.6s both;
+}
+
+@keyframes aura-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.86);
+  }
+  /* The flare, at full strength and full size. */
+  22% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  /* Then it dissolves exactly where it is — no drift, no collapse. */
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes shield-raise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.24);
+  }
+}
+
+@keyframes shield-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.24);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.29);
+  }
+}
+
+@keyframes shield-wave {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.62);
+  }
+}
+
+@keyframes impact-strike {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.75);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+}
+
+@keyframes impact-shockwave {
+  0% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * The result still has to be unmistakable without motion, so the states
+   * keep their final geometry and colour and only lose the travel.
+   */
+  .shield,
+  .impact {
+    animation: none;
+  }
+
+  /*
+   * The outer flare is a moment rather than a state, and a moment with no
+   * motion is nothing at all — so with motion off it simply does not
+   * appear. The shell around the planet still carries the verdict.
+   */
+  .aura {
+    animation: none;
+    display: none;
+  }
+
+  .shield {
+    transform: translate(-50%, -50%) scale(1.24);
+  }
+
+  .shieldEcho,
+  .impactEcho {
+    display: none;
+  }
+
+  .impact {
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface {
+    animation: none;
+  }
+
+  /*
+   * Paused rather than cancelled. The negative delay has already placed the
+   * loop at the correct wall-clock phase, so pausing holds the planet at
+   * the face it should be showing right now; `animation: none` would snap
+   * it back to phase 0 and make a reduced-motion client the one client
+   * looking at a different Earth from everybody else.
+   */
+  .sphere {
+    animation-play-state: paused;
+    will-change: auto;
+  }
+}
+
+/*
+ * A phone cannot afford sixteen 3D longitude slices compositing under a
+ * circular clip, fifty SVG pulses and 220 star nodes. Pause the spin at
+ * the wall-clock face (same trick as reduced-motion) and drop the GPU hint.
+ */
+@media (max-width: 720px), (hover: none) and (pointer: coarse) {
+  .sphere {
+    animation-play-state: paused;
+    will-change: auto;
+  }
+}

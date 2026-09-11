@@ -1,0 +1,20 @@
+{
+  /*
+   * What a deploy typechecks: the app, without its tests.
+   *
+   * `tsconfig.json` covers both, and that is what `npm run typecheck` and CI
+   * use — a type error in a test is a real error and must fail somewhere.
+   * But it cannot fail *here*, because the tests reach into `api/` (the
+   * directory-level fold is exercised from the frontend suite), and `api/`
+   * is the one thing a Vercel build must not see: its zero-config treats a
+   * root `api/` as Serverless Functions and tries to build all 19 NestJS
+   * files as handlers, which is what was failing every deployment at
+   * "Deploying outputs...".
+   *
+   * So the build checks what it ships, `.vercelignore` hides the backend,
+   * and the tests are still typechecked by `npm run typecheck`.
+   */
+  "extends": "./tsconfig.json",
+  "include": ["frontend", "vite.config.ts"],
+  "exclude": ["frontend/src/tests"]
+}

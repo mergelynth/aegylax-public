@@ -1,0 +1,23 @@
+{
+  "name": "@aegylax/contracts",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "1.0.0",
+  "description": "AEGYLAX on-chain protocol — Base (public execution) + a pluggable confidential layer (Fhenix CoFHE / Inco Lightning).",
+  "type": "module",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -vv",
+    "clean": "forge clean"
+  },
+  "dependencies": {
+    "@fhenixprotocol/cofhe-contracts": "0.2.0",
+    "@inco/lightning": "1.0.2",
+    "@openzeppelin/contracts": "5.4.0",
+    "@openzeppelin/contracts-upgradeable": "5.4.0"
+  },
+  "devDependencies": {
+    "@openzeppelin/upgrades-core": "^1.44.0",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.7"
+  }
+}

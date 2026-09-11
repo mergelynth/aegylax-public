@@ -1,0 +1,73 @@
+/*
+ * The console's message treatment, applied to a readout: type and light
+ * over the panel, no box.
+ *
+ * `CommandCenter.module.css` `.notice` sets the rule this follows — a
+ * status line earns its legibility from weight, tracking and a shadow, not
+ * from a border. The colours are unchanged from the bordered card this
+ * replaces; only the chrome is gone.
+ */
+
+.block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+  min-width: 0;
+  /*
+   * Lifted off the header's centre line.
+   *
+   * The dialog's title is one line and this block is two, so centring the
+   * pair hangs the readout below the title and leaves the label floating in
+   * the middle of nothing. Pulling it up sits the label's cap height with
+   * the title's, which is where the eye expects a status line beside a
+   * heading — and the negative margin does it without giving `Modal`'s
+   * header a special case for this one accessory.
+   */
+  margin-top: -5px;
+}
+
+.label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-accent) 46%, var(--color-text-dim));
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 34%, transparent);
+}
+
+/*
+ * The durable half of the answer, and the subject of the sentence the label
+ * starts. Quieter than the clock beside it: it is the value the contract is
+ * actually told, but the countdown is the figure a creator is watching.
+ */
+.epoch {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--color-text-dim);
+}
+
+.block[data-state='pending'] .value {
+  color: var(--color-text-dim);
+  text-shadow: none;
+}

@@ -1,0 +1,78 @@
+{
+  "name": "aegylax",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node tools/chain/prebuild.mjs && tsc --noEmit -p tsconfig.build.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "chain:build": "npm --prefix contracts run build",
+    "chain:test": "npm --prefix contracts run test",
+    "chain:deploy": "node tools/chain/deploy.mjs",
+    "chain:upgrade": "node tools/chain/upgrade.mjs",
+    "chain:verify": "node tools/chain/verify.mjs",
+    "chain:sync": "node tools/chain/sync-frontend.mjs",
+    "chain:install": "npm --prefix contracts install",
+    "chain:e2e": "node tools/chain/e2e.mjs",
+    "chain:e2e:refund": "node tools/chain/e2e-refund.mjs",
+    "chain:audit": "node tools/chain/audit-balance.mjs",
+    "chain:reveal": "node tools/chain/reveal.mjs",
+    "chain:params": "node tools/chain/params.mjs",
+    "chain:keeper": "node tools/chain/keeper.mjs",
+    "api": "node dist-server/api/main.js",
+    "api:dev": "npm run api:build && node --watch dist-server/api/main.js",
+    "api:build": "tsc -p api/tsconfig.json && node -e \"require('fs').writeFileSync('dist-server/package.json', JSON.stringify({type:'commonjs'}))\"",
+    "server": "npm run api",
+    "server:dev": "npm run api:dev",
+    "server:build": "npm run api:build"
+  },
+  "dependencies": {
+    "@cofhe/sdk": "^0.7.1",
+    "@inco/js": "^1.0.0-testnet-1",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/config": "^12.0.0",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/schedule": "^12.0.1",
+    "@privy-io/react-auth": "^3.37.0",
+    "buffer": "^6.0.3",
+    "motion": "^13.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "viem": "^2.55.11",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.0",
+    "@openzeppelin/upgrades-core": "^1.44.0",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "dotenv": "^17.4.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@cofhe/sdk": {
+      "viem": "$viem"
+    }
+  }
+}

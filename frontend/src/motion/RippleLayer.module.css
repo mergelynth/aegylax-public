@@ -1,0 +1,45 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Inherits the host's rounding so the ink is clipped to the button's
+     actual shape rather than to its bounding box. */
+  border-radius: inherit;
+}
+
+/*
+ * One circle, centred on the press and grown to cover the surface.
+ *
+ * `currentColor` at low alpha rather than a fixed cyan: the same ripple has
+ * to sit on the CTA's cyan fill and on a dark ghost button, and on the
+ * first of those a cyan ink is invisible. Taking the host's own ink colour
+ * means it always contrasts with the surface it is on, because that is what
+ * the text on that surface already had to do.
+ */
+.ink {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: currentColor;
+  opacity: 0.28;
+  animation: ripple-ink 0.52s var(--boot-ease, ease-out) forwards;
+}
+
+@keyframes ripple-ink {
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+
+/*
+ * ТЗ §34/§17 — with motion off there is no ripple at all. `useRipple`
+ * already declines to spawn one, and this is the belt to that's braces:
+ * nothing here should ever animate for someone who asked it not to.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ink {
+    display: none;
+  }
+}

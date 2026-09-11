@@ -1,0 +1,57 @@
+.space {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background:
+    var(--gradient-scene),
+    var(--color-bg);
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background-color: var(--base-color, #e8eef8);
+  opacity: var(--base-opacity, 0.5);
+}
+
+.twinkle {
+  animation-name: twinkle;
+  animation-duration: 2.4s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+/* Fade in -> brief peak -> fade out. Only picked for stars visible enough
+   to begin with, so the opacity/scale/color bump reads as a real sparkle
+   instead of vanishing into a sub-pixel dot. */
+@keyframes twinkle {
+  0% {
+    opacity: var(--base-opacity);
+    background-color: var(--base-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  42% {
+    opacity: var(--peak-opacity, var(--base-opacity));
+    background-color: var(--twinkle-color, var(--base-color));
+    transform: translate(-50%, -50%) scale(var(--peak-scale, 1));
+  }
+  58% {
+    opacity: var(--peak-opacity, var(--base-opacity));
+    background-color: var(--twinkle-color, var(--base-color));
+    transform: translate(-50%, -50%) scale(var(--peak-scale, 1));
+  }
+  100% {
+    opacity: var(--base-opacity);
+    background-color: var(--base-color);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle {
+    animation: none;
+  }
+}

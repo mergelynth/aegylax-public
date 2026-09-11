@@ -1,0 +1,46 @@
+{
+  "84532": {
+    "name": "aegylax",
+    "network": "base-sepolia",
+    "chainId": 84532,
+    "version": "1.8.0",
+    "proxy": "0xa755d74054c2c8ba01f27e59f935375f890e32e4",
+    "implementation": "0x99d09eec274eead1500f2da364f1700edacb693a",
+    "lens": "0x780a851f34bd08f3cc7391c709e26655a8ccd607",
+    "confidentialEngine": {
+      "kind": "fhenix-cofhe",
+      "address": "0x0139dbdb46f32d7ad39bcc1c096fcf5e6bce44b8",
+      "contract": "FhenixConfidentialEngine",
+      "release": "TESTNET",
+      "executor": "0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9"
+    },
+    "deploymentBlock": 46209196,
+    "genesisBlock": 46209196,
+    "explorerUrl": "https://sepolia.basescan.org",
+    "rpcUrl": "https://sepolia.base.org",
+    "deployedAt": "2026-08-31T14:31:28.681Z",
+    "params": {
+      "gridColumns": "10",
+      "gridRows": "5",
+      "sectorSpanKm": "1000",
+      "interceptRadiusMilliSectors": "140",
+      "epochBlocks": "120",
+      "defenseSpeedKmPerBlock": "1200",
+      "probeConeMicroRad": "174533",
+      "revealGraceBlocks": "5000",
+      "minPlayers": "2",
+      "maxPlayers": "25",
+      "maxProbesPerPlayer": "6",
+      "freeProbes": "3",
+      "maxCreatorFeeBps": "1500",
+      "minRegistrationSeconds": "0",
+      "maxRegistrationSeconds": "2592000",
+      "minEntryFee": "500000000000000",
+      "maxEntryFee": "100000000000000000",
+      "minStartPrizePool": "1000000000000000",
+      "probePrice": "200000000000000",
+      "protocolJoinFee": "500000000000000"
+    },
+    "globalDefenseEpochInterval": 1000
+  }
+}

@@ -1,0 +1,208 @@
+/*
+ * Positioned by its `EarthSpaceViewport` parent (`.overlay`, inset:0 over
+ * the whole hero), not by document flow — centered on Earth's own
+ * horizontal center and pinned near the viewport's bottom edge, so it
+ * reads as sitting on the planet rather than as another header stat.
+ * z-index above Earth's sphere (`.wrap`, z-index: 2 in EarthSphere.module.css)
+ * so the numbers stay legible over the globe instead of being painted under it.
+ */
+.item {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(8px, 3.5%, 28px);
+  /* Its resting transform, declared through the two properties the
+     page-load entrance builds on rather than as a literal — a keyframe
+     animating `transform` would otherwise drop the centering. See
+     `globals.css` and `EarthSphere.module.css`. */
+  --anchor-x: -50%;
+  --anchor-y: 0px;
+  transform: translate(var(--anchor-x), var(--anchor-y));
+  z-index: 6;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  /* A scrim, not a card: Earth's texture underneath swings from bright
+     desert tan to dark ocean, so the numbers need a background of their own
+     to stay legible against either — light text-shadow alone (the header's
+     old treatment) washes out on the bright sand.
+
+     Deliberately an opaque-enough gradient rather than the `backdrop-filter:
+     blur(8px)` it replaces. A backdrop blur is recomputed whenever what is
+     *behind* it changes, and what is behind this one is the spinning planet —
+     so the blur was being re-run for every frame of Earth's rotation, forever,
+     on the app's landing page. It was the single most expensive thing on the
+     Home screen. Raising the scrim's own opacity buys the same legibility for
+     nothing per frame. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-bg) 86%, transparent),
+    color-mix(in srgb, var(--color-bg) 74%, transparent)
+  );
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--glow-panel);
+  outline: none;
+  cursor: default;
+}
+
+/*
+ * The clock's three registers, warm against a cold scene.
+ *
+ * Day X is what the screen is *counting down to* rather than reporting on,
+ * and the warmth is what says so. Derived from the warning colour rather
+ * than hand-mixed sepia, so it stays warm in any provider theme instead of
+ * only in the one it was matched against.
+ *
+ * It shares that warmth with exactly one other element: the jackpot pill in
+ * the header, which lifts these recipes verbatim (`.years` for the figure,
+ * `.time` for the ticker). The two are a pair — the event, and the stake on
+ * it — so the warm hue names a category rather than an object. Nothing else
+ * on the screen may join them without that stopping being true.
+ */
+.years {
+  font-size: 1.15rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-warning) 74%, var(--color-text-dim));
+  text-shadow: 0 0 10px color-mix(in srgb, var(--color-warning) 33%, transparent);
+  white-space: nowrap;
+}
+
+.days {
+  font-size: 0.92rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-warning) 22%, var(--color-text));
+  white-space: nowrap;
+}
+
+.time {
+  font-size: 0.85rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-warning) 26%, var(--color-text-dim));
+  white-space: nowrap;
+}
+
+/*
+ * ТЗ §7 — Day X reacting to an attack.
+ *
+ * Light only. The Global Defense Status icons shake because a counter ticking
+ * over is an event arriving; this is a *date being rewritten*, and a date that
+ * jumps around reads as an unreliable readout rather than an important one. So
+ * nothing here moves: the three segments brighten, throw a halo in the colour
+ * each already wears, and settle back.
+ *
+ * `currentColor` is what keeps that true per segment without three sets of
+ * keyframes — the years glow amber, the days parchment, the clock grey — so
+ * the whole readout lights as one object instead of one badge flashing on top
+ * of a timer. Animating `text-shadow`/`color` on three short runs of text is
+ * cheap, and it stops when the window is over rather than looping forever.
+ */
+.glowing {
+  animation: horizonGlow 0.9s ease-out both;
+}
+
+@keyframes horizonGlow {
+  0% {
+    filter: brightness(1);
+    text-shadow: 0 0 10px color-mix(in srgb, currentColor 33%, transparent);
+  }
+  22% {
+    filter: brightness(1.55);
+    text-shadow:
+      0 0 8px color-mix(in srgb, currentColor 85%, transparent),
+      0 0 20px color-mix(in srgb, currentColor 55%, transparent);
+  }
+  100% {
+    filter: brightness(1);
+    text-shadow: 0 0 10px color-mix(in srgb, currentColor 33%, transparent);
+  }
+}
+
+/* Opens upward: at the bottom of the viewport there's no room below the
+   timer for a tooltip to drop down into. */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-strong);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  z-index: 20;
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-border-strong);
+}
+
+.tooltipLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.tooltipDescription {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-shadow: none;
+}
+
+.item.pinned .tooltip,
+.item:hover .tooltip,
+.item:focus-visible .tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 480px) {
+  .item {
+    bottom: clamp(6px, 3%, 20px);
+    gap: 5px;
+  }
+  .years {
+    font-size: 1.02rem;
+  }
+  .days {
+    font-size: 0.84rem;
+  }
+  .time {
+    font-size: 0.76rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    transition: none;
+  }
+
+  /* The glow is light rather than movement, so it survives reduced motion —
+     but the brightness ramp is dropped so it settles rather than pulses. */
+  .glowing {
+    animation: none;
+    text-shadow: 0 0 12px color-mix(in srgb, currentColor 70%, transparent);
+  }
+}

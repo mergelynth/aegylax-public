@@ -1,0 +1,62 @@
+/*
+ * ТЗ §12-§15 — a signal moving through ciphertext.
+ *
+ * One keyframe, three elements, one `opacity` each, and a delay per group.
+ * That is the entire mechanism: no timer, no React state, nothing computed
+ * per frame (ТЗ §19). It runs for as long as the tab is open, so it had to
+ * be the cheapest thing on the page rather than merely a cheap one.
+ */
+
+/*
+ * One group of the redaction.
+ *
+ * `--wave-step` is its position in the row and the only thing that differs
+ * between them; multiplying it by the step interval is what turns three
+ * identical animations into a wave. 2.4s for a full cycle with 0.42s
+ * between groups: slow enough to read as processing rather than as
+ * flickering, and — ТЗ §15 — completely predictable. Nothing here is
+ * random, because random flashing is what this is trying not to be.
+ */
+.block {
+  display: inline-block;
+  animation: cipher-wave 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--wave-step, 0) * 0.42s);
+}
+
+/*
+ * Dim, up, and back down, with most of the cycle spent at rest.
+ *
+ * The peak is narrow on purpose: a sine-like ramp would leave every group
+ * half-lit most of the time and the row would read as unstable. A short
+ * rise inside a long trough reads as one signal passing — and because the
+ * groups are offset by less than the peak's width, the light appears to
+ * travel from one to the next rather than to hop.
+ *
+ * Opacity only. The blocks sit inline in a line of mono text, and anything
+ * that changed their size would move the words either side of them.
+ */
+@keyframes cipher-wave {
+  0%,
+  46%,
+  100% {
+    opacity: 0.42;
+  }
+  18% {
+    opacity: 1;
+  }
+}
+
+/*
+ * ТЗ §20 — with motion off the loop stops entirely.
+ *
+ * Held at a legible mid-strength rather than at either end of its cycle, so
+ * the redaction still reads as a redaction. The decode is off too
+ * (`useScramble` asks the same question), so this is simply what the line
+ * looks like, from first paint until the tab closes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+    opacity: 0.7;
+  }
+}

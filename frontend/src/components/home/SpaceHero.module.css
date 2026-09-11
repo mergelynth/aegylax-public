@@ -1,0 +1,780 @@
+/*
+ * The hero does not animate as one block, and this element does not
+ * animate at all.
+ *
+ * It used to carry a single 0.7s `fadeIn` here. Every line inside it now
+ * arrives by a mechanism of its own instead — decode, unmask, stagger,
+ * command activation, signal acquisition, handshake — which is ТЗ §31's
+ * requirement that no element borrow another's animation. What each of those is, and when,
+ * lives in `app/motion.css`; the class names here (`boot-title`,
+ * `boot-subtitle`, `boot-tagline`, `boot-cta`, `boot-docs`, `boot-seal`)
+ * are the join between the two.
+ *
+ * The container had to stop animating for any of that to work. `.hero` is
+ * centered by `transform: translateX(-50%)`, and a keyframe animating
+ * `transform` on this element replaces that centering — which is why the
+ * old animation had to carry the -50% through every frame. Animating the
+ * children instead leaves the centering alone, and every child is an
+ * ordinary flex item with no transform of its own.
+ *
+ * Reduced motion is handled with the rest of the system for the entrance.
+ * The two things in *this* file that keep moving afterwards — the CTA's
+ * resting wave and the ways-in row's hover — are this file's to switch off,
+ * and do it at the bottom.
+ */
+
+.hero {
+  position: absolute;
+  left: 50%;
+  top: clamp(48px, 14%, 140px);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(640px, 88vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  pointer-events: none;
+}
+
+/*
+ * Weight and tracking come from the theme rather than from here, so the
+ * headline, the wordmark and the panel titles move together. The Fhenix
+ * theme tightens the tracking a step; nothing else about this heading
+ * changed.
+ */
+.title {
+  margin: 0;
+  font-size: var(--text-hero);
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--color-text);
+  text-shadow: 0 4px 30px #000000cc;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-hero-sub);
+  color: var(--color-text-dim);
+  text-shadow: 0 2px 16px #000000cc;
+  max-width: 46ch;
+}
+
+.tagline {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-hero-tag);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-accent-muted);
+  text-shadow: 0 2px 16px #000000cc;
+}
+
+/*
+ * The three phrases (ТЗ §11).
+ *
+ * `inline-block` is load-bearing rather than cosmetic: the stagger moves
+ * each phrase horizontally, and a plain inline box cannot be transformed at
+ * all — the animation would silently do nothing.
+ *
+ * The gap is a margin rather than whitespace in the markup because there is
+ * no whitespace in the markup: the phrases come out of a `map`, so adjacent
+ * elements sit flush and the sentence would read "Find where.Find when."
+ * without it. A `flex` row with a `gap` would have done the same job and
+ * cost the line its ability to wrap like the prose it is.
+ */
+.tagline > span {
+  display: inline-block;
+}
+
+.tagline > span:not(:last-child) {
+  margin-right: 0.32em;
+}
+
+/*
+ * The button and the row of ways in, and the distance between them.
+ *
+ * `--space-5` rather than `--space-3`, for two reasons that happen to want
+ * the same number. The row is deliberately much quieter than the button now
+ * (see `.nav`), and quiet things sitting 12px under a filled CTA read as
+ * part of it — a caption to the button rather than a separate way in; the
+ * hierarchy is said with distance as much as with weight. And the links
+ * carry a hit area 11px taller than their text on each side (`.nav::before`),
+ * which at 12px left barely a pixel between the top of that area and the
+ * bottom of the button: a pointer aimed just under the CTA was landing on a
+ * link.
+ */
+.actions {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/*
+ * The one thing on this page a first-time visitor is meant to press, saying
+ * so the way every other "press this" in the product says it.
+ *
+ * A ring leaving the button's own outline and fading outwards — the same
+ * wave the rail's Probe and Intercept wear (`CommandRail.module.css`) and
+ * the wallet's top-up wears (`WalletPill.module.css`), and for the same
+ * reason: a screen with more than one live control cannot say which one is
+ * waiting for a click with a contour or a colour, because everything here
+ * already has both. Movement can, and this is the only thing in the hero's
+ * action row that moves.
+ *
+ * Quieter than either of those, though: it takes 2.8s to breathe out rather
+ * than their 2.5s, and travels 9px rather than 8. Theirs sit inside a dense
+ * panel and have to carry across it; this one is alone on an almost black
+ * page under a headline that is already the loudest motion in the product,
+ * so it should be findable in peripheral vision and invisible to anyone
+ * reading the line above it.
+ *
+ * The ring does *not* leave at a lower alpha, which was the first attempt and
+ * was wrong twice over. Cyan below about 40% over a near-black page stops
+ * reading as cyan at all — it comes out as a grey halo, which is a button
+ * with a smudge around it rather than one with a signal coming off it — and
+ * the eye then has to work harder to see something that was supposed to be
+ * effortless. Quiet is bought with time and distance here, not with alpha.
+ *
+ * Animated on the button's own `box-shadow` rather than on a pseudo-element,
+ * which is forced: `Button` clips its contents (`overflow: hidden` carries
+ * the ripple and the busy sweep), so a ring drawn on a child would be cut
+ * away at exactly the edge it is meant to leave. The resting glow is held in
+ * `--seat-shadow` so the keyframes carry it forward instead of a second copy
+ * drifting away from the original.
+ */
+.cta {
+  --seat-shadow: var(--shadow-cta);
+  box-shadow: var(--seat-shadow);
+  animation: cta-wave 2.8s ease-out infinite;
+}
+
+/*
+ * The wave stops the moment the invitation has landed. A pointer on the
+ * button, a press in flight, or a button that cannot be pressed at all — in
+ * every one of those the ring is asking for something that is already
+ * happening or already refused.
+ *
+ * Only the animation is taken off. `Button`'s own `.primary:hover` glow
+ * outranks the resting shadow here, so hover keeps the lift it has always
+ * had rather than this file restating it and the two drifting apart.
+ */
+.cta:hover,
+.cta:focus-visible,
+.cta:active,
+.cta:disabled {
+  animation: none;
+}
+
+@keyframes cta-wave {
+  0% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 0 color-mix(in srgb, var(--color-accent) 44%, transparent);
+  }
+  64%,
+  100% {
+    box-shadow:
+      var(--seat-shadow),
+      0 0 0 9px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+/*
+ * The two ways in that are not the primary call, on one row.
+ *
+ * Browsing and reading are both "not yet" answers to the CTA, and stacking
+ * them as two more rows under it would have made the hero a menu. One row
+ * keeps the hero four beats deep — title, threat, tagline, action — with
+ * the alternatives sharing the last one.
+ *
+ * They used to be set like the tagline — 0.9rem, semibold, sentence case,
+ * one of them turning full accent under the pointer — which made them read
+ * as two more calls to action beside the call to action. A hero with three
+ * things asking to be pressed has none. So the row is now *navigation*
+ * rather than invitation, and everything below follows from that single
+ * decision: mono, small, uppercase, widely tracked, and quiet — roughly half
+ * the visual weight of the button above it.
+ *
+ * The gap is wide because it is the only thing separating two labels that
+ * carry no boxes of their own; the mark in the middle is a signal, not a
+ * piece of punctuation. It is `--space-5` rather than `--space-4` because it
+ * also has to hold Join's arrow, which is drawn out of flow and lands in
+ * this gap when the pointer arrives (see `.navArrow`) — at 16px the arrow
+ * came in almost touching the mark.
+ */
+.secondary {
+  position: relative;
+  /*
+   * The row is its own stacking context, so the sweep below can sit at
+   * `z-index: -1` and mean "behind these two labels" rather than "behind
+   * whatever ancestor happens to have painted a background".
+   */
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/*
+ * The bed the row sits on: a wide, very faint band of the accent that
+ * crosses under both labels and the mark, once every nine and a half
+ * seconds.
+ *
+ * The row had a problem the type alone could not fix. Set this quiet — small
+ * mono, dim blue-gray, no box of any kind — it is legible but *inert*: two
+ * strings floating on a black page with a dot between them, which is a
+ * caption, not an instrument. The mark says the row is instrumented only
+ * while a pointer is on it, and before that there is nothing to say the row
+ * is live at all. This is what says it, at the lowest amplitude the page
+ * has: something passes under the words, and the row reads as a strip the
+ * system is watching rather than as two links that were typed there.
+ *
+ * It spans the labels *and* the mark, which is the point — one moving thing
+ * across all three is what makes them one row rather than three elements
+ * that happen to be adjacent.
+ *
+ * Two things keep it from competing with the CTA above it, which is the only
+ * risk anything moving down here carries — and neither of them is alpha.
+ * The first attempt was a wide band at 15% of the accent, which is the same
+ * mistake the CTA's ring made: cyan that faint over a near-black page is not
+ * a quiet signal, it is a grey smudge behind the words, and a smudge is
+ * worse than nothing. What keeps this quiet is that the light is *narrow* against the row it
+ * crosses, so it reads as something passing rather than as a wash sitting;
+ * that it takes 9.6s to cross, which is slower than anything looks at; and
+ * that it peaks at 30% of the accent against the CTA wave's 44%, which is
+ * the ratio the hierarchy actually wants (ТЗ §30).
+ *
+ * The crossing is deliberately twice the trajectory line's `seal-hold` and
+ * four times the cipher blocks' — the same reasoning that file gives for its
+ * own period. The bottom of the hero is three indicators on one clock
+ * family, so they can never drift into an arbitrary relationship with each
+ * other; two ambient loops on unrelated periods read as two things going
+ * wrong at different speeds.
+ *
+ * The mechanism is the side panel's glint (`LobbySidePanel.module.css`) —
+ * a background image narrower than its box, moved by `background-position`.
+ * It never rests and it never resets: the light crosses the row, turns
+ * around out of sight past the edge, and comes back. The arithmetic that
+ * hides the turn is on the keyframes below.
+ */
+.secondary::before {
+  content: '';
+  position: absolute;
+  /* Wider and taller than the text, so the band is a bed under the row
+     rather than a highlight on the words. */
+  inset: -10px -22px;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  /*
+   * Radial and symmetric, and both words are the result of getting it wrong
+   * first.
+   *
+   * Symmetric: the first version put the peak near one end with a long dim
+   * tail off the other, meaning to read as a comet. It did not — travelling
+   * rightwards the *tail* leads, so what crossed the row was a wide dim wash
+   * with a bright edge behind it, which is the shape of a smudge. Brightest
+   * in the middle has no leading or trailing edge to get the wrong way
+   * round.
+   *
+   * Radial: a `linear-gradient` fades at the two ends it has, and a
+   * background tile has four sides. Soft left and right, hard top and
+   * bottom — the band came out as a lit *rectangle* sliding under the words,
+   * with two horizontal edges the eye caught immediately. An ellipse has no
+   * edges to leave hard. The tile is more than twice as wide as it is tall,
+   * so what it draws is still a band rather than a dot.
+   */
+  background-image: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-accent) 30%, transparent),
+    transparent 72%
+  );
+  background-size: 34% 100%;
+  background-repeat: no-repeat;
+  /*
+   * Where the brightness comes from, and it is the mask rather than the
+   * band: the band is one fixed shape travelling at one brightness, and the
+   * mask decides how much of it survives at each point across the row. Full
+   * strength through the middle, falling away toward both ends, gone before
+   * either edge.
+   *
+   * Graded the whole way rather than a plateau with fades bolted on the
+   * ends. A `#000 18% … #000 82%` mask holds the band at full strength
+   * across two thirds of the row and then drops it, which reads as a light
+   * that travels flat and then falls off a shelf. Ramping continuously means
+   * the band is *always* getting brighter or dimmer, which is what a light
+   * crossing a strip actually does — and it is what makes the loop below
+   * invisible, since the band is at nothing exactly where it wraps.
+   */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #00000073 26%,
+    #000 50%,
+    #00000073 74%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #00000073 26%,
+    #000 50%,
+    #00000073 74%,
+    transparent
+  );
+  animation: nav-sweep 9.6s linear infinite alternate;
+}
+
+/*
+ * Left to right, then right to left, forever — one light, sweeping the row.
+ *
+ * `alternate` rather than a restart, and that is the whole difference
+ * between a scan and a conveyor belt. A light that always re-enters from the
+ * same side is a thing being *fed* past the words; one that reaches the end
+ * and comes back is a thing *searching* them, which is the only reading this
+ * row wants — it sits under a heading about finding something whose position
+ * is unknown, over a button that opens a hunt for it.
+ *
+ * It costs nothing to hide, either. The travel is exactly "just off the left
+ * edge" to "just off the right edge", so the turn happens at a point where
+ * the band is not on screen at all: there is no visible moment of it
+ * stopping, reversing and setting off again, only a light that leaves one
+ * side and later comes back from it.
+ *
+ * Those two numbers are arithmetic rather than taste. `background-position`
+ * percentages resolve against (container − image), so with a band 34% as
+ * wide as the row the offset at P is 0.66P, and the band occupies
+ * [0.66P, 0.66P + 34]. It is fully off the left at P = -52% and fully off
+ * the right at P = 152%.
+ *
+ * Two other versions were built and are worth naming, because both are the
+ * obvious thing to reach for again. A band that ran off one edge and waited,
+ * dark, before the next one: a scan with a pause in it, which reads as
+ * something intermittent rather than something working. And a tiled
+ * background — two tiles across the row, moved by exactly one tile per cycle,
+ * which loops seamlessly and looks worse: with two lights on the row at all
+ * times there is always something lit at an edge, and what crosses the words
+ * stops reading as a light passing and starts reading as a wash that happens
+ * to move. One light is the effect; the rest of the row should be dark and
+ * waiting for it.
+ *
+ * `linear`, so the sweep holds one speed the whole way. On an easing curve
+ * it would crawl at the ends and hurry through the middle — which is exactly
+ * backwards, since the ends are where the mask has faded it to nothing and
+ * the middle is the only part anybody sees.
+ *
+ * 9.6s per crossing, so the full there-and-back is 19.2s: twice and four
+ * times the trajectory line's `seal-hold`, which is the clock family the
+ * bottom of the hero shares.
+ */
+@keyframes nav-sweep {
+  from {
+    background-position: -52% 50%;
+  }
+  to {
+    background-position: 152% 50%;
+  }
+}
+
+/*
+ * A destination in a navigation system, not a link in a sentence.
+ *
+ * Mono, uppercase and tracked at the same `--tracking-mono` the trajectory
+ * readout below uses, because these two belong to the same technical
+ * register as that line rather than to the prose above it. No underline, no
+ * border, no pill and no background: the row must be able to sit directly on
+ * the space scene without cutting a shape out of it, and every one of those
+ * would draw a box around something whose whole job is not to have one.
+ *
+ * `--text-label` (0.72rem) rather than the tagline's size, at weight 500
+ * against the CTA's 600, in the dim blue-gray the page uses for text that is
+ * *there* rather than text that is speaking. Against a filled cyan button at
+ * 0.9rem/600 that lands at a little over half the weight, which is the
+ * relationship the row is supposed to have with it.
+ */
+.nav {
+  position: relative;
+  display: inline-block;
+  /* Bottom padding is the trace's lane. Nothing else needs the room, and
+     the row's baseline does not shift when the trace appears in it. */
+  padding: 0 0 5px;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mono);
+  color: var(--color-text-dim);
+  text-decoration: none;
+  text-shadow: 0 2px 16px #000000cc;
+  transition: color 0.2s var(--boot-ease);
+}
+
+/*
+ * Muted → almost white, and nothing else about the text changes.
+ *
+ * Not to the accent, which is where this link used to go: cyan is the
+ * product's "press this" and the button above is already wearing it. Taking
+ * the label up to the page's own text colour says "this one, now" without
+ * borrowing the CTA's meaning — the only cyan in the hovered state is the
+ * trace under the words and the mark between them, both of which are
+ * instrument rather than invitation.
+ */
+.nav:hover,
+.nav:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+/*
+ * The part of the link you can actually hit, which is taller than the part
+ * you can see.
+ *
+ * Set this small and this quiet, the row is about 21px of ink — half of what
+ * a finger needs, and the row is the hero's only other way in on a phone.
+ * The height is bought with a transparent overlay rather than with padding
+ * because padding would push the trajectory readout below it down the page:
+ * this element's *box* is what the column's rhythm is measured from, and the
+ * hit area has no business changing it.
+ *
+ * Vertical only. The two links sit 24px apart with the signal mark between
+ * them, and widening them sideways would put two hit areas over one 5px
+ * indicator.
+ */
+.nav::before {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
+}
+
+/*
+ * The label, and the 1px it lifts under the pointer.
+ *
+ * The lift is on this element rather than on the link so it composes with
+ * `motion-press`, which owns the link's own transform on `:active` — two
+ * rules animating one element's `transform` is a fight decided by source
+ * order across two files, which is to say by accident.
+ */
+.navLabel {
+  position: relative;
+  display: inline-block;
+  transition: transform 0.2s var(--boot-ease);
+}
+
+.nav:hover .navLabel,
+.nav:focus-visible .navLabel {
+  transform: translateY(-1px);
+}
+
+/*
+ * The trace: a short cyan run drawn *under* the label, wiping out from its
+ * left edge as the pointer arrives.
+ *
+ * It is inside the label rather than beside it, so the two move together —
+ * the text lifts its pixel and the trace comes with it, as one object
+ * responding, rather than as a word and an underline that happen to
+ * animate at the same time.
+ *
+ * `scaleX` from a left origin rather than an animated `width`: a transform
+ * is composited and a width is a layout pass on every frame of a hover.
+ * It fades at both ends because a line that stops dead reads as a rule under
+ * a link, and this is a signal passing under a label.
+ *
+ * It covers a little under half the word, and that is the difference between
+ * a trace and an underline. Drawn the full width of the label it *is* an
+ * underline — the one decoration this row is specifically not allowed
+ * (ТЗ: no underline, no border, no pill) — and no amount of fading at the
+ * ends argues otherwise once the line runs from the first letter to the
+ * last. Stopping it short leaves something that reads as a mark travelling
+ * under the label rather than as a rule belonging to it.
+ *
+ * And it travels *with the pointer*. A short mark pinned to the left of the
+ * word is still a decoration that happens to be short: it sits under
+ * "JOIN OP" no matter which end of the label you are actually pointing at,
+ * which is the tell that it is not reading anything. Following the cursor is
+ * what turns it into an instrument — the label is a strip the system is
+ * scanning, and the scan is wherever you are looking. `SpaceHero` measures
+ * the pointer and writes `--trace-x`; everything else about it is here.
+ *
+ * Two layers, because the two motions want different clocks. The outer
+ * element carries the *position* and the inner one carries the *reveal*:
+ * the follow has to be near-instant and dead linear or the mark feels
+ * rubber-banded to the cursor instead of attached to it, while the reveal is
+ * a wipe on the system's own easing. One element could not do both — a
+ * single `transform` gives them one duration and one curve.
+ *
+ * The outer element is also the one that gets measured, which is why the
+ * scale lives on the inner: a `scaleX(0)` box reports no width, and the
+ * clamp that keeps the mark inside the word needs the real one.
+ */
+.navTrace {
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 44%;
+  height: 1px;
+  /* Its resting place, and where a keyboard focus leaves it: there is no
+     pointer to follow, so it sits at the head of the word. */
+  transform: translateX(var(--trace-x, 0px));
+  transition: transform 0.12s linear;
+}
+
+.navTrace::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent) 22%,
+    var(--color-accent) 78%,
+    transparent
+  );
+  opacity: 0;
+  /* Out of its own middle, so it opens under the cursor rather than running
+     to it from one end. */
+  transform: scaleX(0);
+  transition:
+    transform 0.28s var(--boot-ease),
+    opacity 0.18s ease;
+}
+
+.nav:hover .navTrace::before,
+.nav:focus-visible .navTrace::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/*
+ * The arrow, and only on Join — because only one of these two is somewhere
+ * you go *to do something*. Reading the rules is a page; joining an
+ * operation is the game, and the mark is the difference stated in one
+ * character rather than in a second colour or a second weight.
+ *
+ * Painted out of flow, just past the end of the label, so it costs the row
+ * no width at all.
+ *
+ * Reserving its box at rest was the first version and it was visibly wrong:
+ * the arrow is only on one of the two links, so the space held for it sat
+ * between Join and the mark and nowhere else, and the signal mark — the one
+ * element whose whole job is to be the centre of the row — was pushed
+ * measurably off it. Out of flow, the row is symmetrical at rest and the
+ * arrow arrives into the gap that is already there.
+ *
+ * Inside the label rather than beside it, so it carries the label's own 1px
+ * lift: the words and the mark after them move as one object.
+ */
+.navArrow {
+  position: absolute;
+  left: 100%;
+  bottom: 0;
+  /* Clear of the last glyph's tracking, and short of the signal mark. */
+  margin-left: 3px;
+  color: var(--color-accent);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.24s var(--boot-ease);
+}
+
+.nav:hover .navArrow,
+.nav:focus-visible .navArrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/*
+ * The signal mark between the two — the piece that makes this a navigation
+ * system rather than two links with a middot between them.
+ *
+ * It replaced a hairline rule, which said "these are separate" and nothing
+ * else. A small cyan ring says the row is *instrumented*: it sits dark and
+ * almost unlit at rest, and lights when either destination is under the
+ * pointer, so the separator is part of the same object as the labels rather
+ * than furniture between them. Both links light it, deliberately — one
+ * indicator for one row.
+ *
+ * Drawn as a bordered box rather than typed as a `◦`, for the reason the
+ * title's noise is drawn rather than typed (`motion/runes`): a geometric
+ * character is resolved out of whatever font on the machine happens to carry
+ * it, and arrives at that font's metrics — off the baseline the labels sit
+ * on, or as an empty box. A 5px ring is 5px everywhere.
+ */
+.navMark {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 38%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  /*
+   * The row centres its items, and the two links are 5px taller than their
+   * text because each carries the trace's lane under it — so a mark centred
+   * on the row sits that much below the letters it is meant to be level
+   * with. The same 5px puts it back on the text's own middle.
+   */
+  margin-bottom: 5px;
+  transition:
+    border-color 0.24s ease,
+    background 0.24s ease,
+    box-shadow 0.28s ease,
+    transform 0.28s var(--boot-ease);
+}
+
+.secondary:has(.nav:hover) .navMark,
+.secondary:has(.nav:focus-visible) .navMark {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 62%, transparent);
+  box-shadow: 0 0 9px 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  transform: scale(1.25);
+}
+
+/*
+ * The encrypted-state line under the actions (ТЗ §11).
+ *
+ * Mono, small and quiet on purpose: it is technical readout, and the moment
+ * it competes with the CTA above it the hero has two focal points and no
+ * primary action. `pointer-events` stay off with the rest of the hero — it
+ * is something to read, not something to click.
+ */
+.seal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /*
+   * `--space-4` on top of the hero's own `--space-3`, so this line sits
+   * clear of the ways-in row above it rather than closing up under it. It is
+   * a *readout*, not a third item in that row, and at the old 8px the two
+   * were one block of small mono type with a gap in it — the same register,
+   * the same size, no air between them. It also has to clear the row's hit
+   * area, which reaches 11px below the labels.
+   */
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  text-shadow: 0 2px 16px #000000cc;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sealTerm {
+  color: var(--color-text-dim);
+}
+
+/* Where the number would be. The theme decides how a redaction is drawn. */
+.sealValue {
+  color: var(--color-accent-soft);
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+/*
+ * The claim the bars are making, in the accent (ТЗ §11).
+ *
+ * The one saturated thing on the line, and small enough that it cannot
+ * compete with the CTA above it — which is the constraint that decides
+ * everything about this element. A hairline box rather than a filled chip:
+ * a fill here would be a second button-shaped object under the actual
+ * button, and the whole hero rests on there being exactly one.
+ */
+.sealState {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+  border-radius: 3px;
+  color: var(--color-accent);
+  font-size: 0.92em;
+  line-height: 1;
+}
+
+/* A rule rather than a middot: it separates two readouts without adding a
+   third piece of punctuation to a line that is already all symbols. */
+.sealDivider {
+  width: 14px;
+  height: 1px;
+  background: var(--border-hairline);
+}
+
+/*
+ * Sentence case, against the uppercase mono of the rest of the line.
+ *
+ * Not a style choice: uppercasing it printed "FHENIX COFHE", and a provider's
+ * name is theirs to capitalise. Dropping the transform here also separates
+ * the two halves of the line — a redacted readout, then a credit — without
+ * needing a second colour for it.
+ *
+ * It used to sit at 0.6 opacity on the dim text colour, which put it below
+ * the threshold where anyone reads it: the line said what the game runs on
+ * and nobody could see it. Now it is legible prose, and the provider's name
+ * inside it is the one word carrying colour.
+ */
+.sealCredit {
+  color: var(--color-text-label);
+  opacity: 0.85;
+  text-transform: none;
+  letter-spacing: 0.06em;
+}
+
+/*
+ * The provider, in the muted accent.
+ *
+ * Muted rather than full strength on purpose — this is a credit sitting
+ * under the CTA, and it has to be *findable*, not competitive. The colour
+ * is doing the work of a logo here (ТЗ §7: Fhenix stays secondary, no mark
+ * beside the AEGYLAX wordmark), which is exactly as much branding as a
+ * footnote should carry.
+ */
+.sealCreditName {
+  color: var(--color-accent-muted);
+  font-weight: 600;
+}
+
+/*
+ * ТЗ §20 — with motion off, the two things in this file that move stop.
+ *
+ * The CTA keeps its resting glow and simply stops breathing; the row keeps
+ * every one of its hover states and arrives at them instead of travelling to
+ * them. Nothing is hidden and nothing is unreachable — what goes is the
+ * *movement*, which is the whole of what was asked for.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    animation: none;
+  }
+
+  /*
+   * The band stops crossing and parks under the middle of the row, where the
+   * signal mark is. Taking it off entirely would cost the row the one thing
+   * that says it is live; holding it still costs only the movement, which is
+   * the whole of what was asked for.
+   */
+  .secondary::before {
+    animation: none;
+    background-position: 50% 50%;
+  }
+
+  .nav,
+  .navLabel,
+  .navTrace,
+  .navTrace::before,
+  .navArrow,
+  .navMark {
+    transition: none;
+  }
+
+  .nav:hover .navLabel,
+  .nav:focus-visible .navLabel {
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    top: clamp(32px, 10%, 80px);
+    gap: var(--space-2);
+  }
+}

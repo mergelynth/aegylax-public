@@ -1,0 +1,178 @@
+/*
+ * ТЗ §4-§10, §19-§23 — the planet's surface layer.
+ *
+ * The whole layer is around fifty markers and the mesh between them, and
+ * nothing else. The count is not a design value — the sampler fills the
+ * visible cap at `SIGNAL_SPACING` and hands back however many that takes.
+ *
+ * What animates, and where, is deliberately split three ways so nothing has
+ * to share a property with anything else:
+ *
+ *   .wake    opacity + scale   the staggered initialization, once per load
+ *   .pulse   opacity + scale   the idle breathing, forever
+ *   .signal  transform + fill  the cursor's magnetic field, from JavaScript
+ *
+ * See `SurfaceSignals.tsx` for why that separation is load-bearing rather
+ * than tidy.
+ *
+ * They do not turn with the globe, and that is deliberate rather than a
+ * shortcut. Pinned to the texture they would have to live inside the
+ * sixteen longitude slices, disappear round the back and be redrawn as the
+ * slices rotate; pinned to the disc they read as an instrument overlay laid
+ * over the planet, which is what this layer is for.
+ */
+.signals {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/*
+ * ТЗ §19 — the markers do not all come up at once.
+ *
+ * Each one wakes `SIGNALS_WAKE.stagger` after the last, in the order they
+ * are declared, which is a scatter across the disc rather than a sweep in
+ * any direction: the surface comes alive in patches, the way a system
+ * reports in. It starts at 1500ms, while Earth's own dawn is still
+ * opening, so the planet materializes with activity already on it (ТЗ §35).
+ *
+ * The delay is set per element in the markup, because it is a position in a
+ * list rather than a design value.
+ */
+.wake {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: signal-wake 420ms var(--boot-ease, ease-out) backwards;
+}
+
+@keyframes signal-wake {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * Period and phase come from the marker table, and no two are alike — a
+ * shared period with staggered delays still ends up in lockstep once the
+ * page has been open a minute (ТЗ §7).
+ *
+ * ТЗ §5 — small square, short glow, back down. The scale step is 15%, which
+ * on a 5px square is under a pixel of growth: it is there to keep the pulse
+ * from being a flat opacity ramp, not to be seen as movement.
+ */
+.pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: signal-pulse;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes signal-pulse {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.74;
+    transform: scale(1.15);
+  }
+}
+
+/*
+ * The marker itself. Its `transform` and `fill` belong to the pointer field
+ * in `SurfaceSignals.tsx` and are written there frame by frame — nothing in
+ * this file may animate either, or the two will overwrite each other.
+ */
+.signal {
+  fill: var(--color-accent, #43e6e0);
+  /* Translate about the square's own frame — without `fill-box` an SVG
+     transform-origin is the viewBox origin, and the push becomes a sweep. */
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The pale end of the ramp: cool white rather than a second hue (ТЗ §8). */
+.signalPale {
+  fill: var(--color-accent-soft, #b9f7f3);
+}
+
+/*
+ * ТЗ §22 — the mesh.
+ *
+ * Thin, cool and nearly invisible at rest; the JavaScript raises each
+ * line's opacity as the cursor nears either of its ends. Deliberately not a
+ * particle network: the pairs are fixed at module load, there are only a
+ * couple of dozen of them, and no line is ever longer than 15 disc units.
+ *
+ * Dashed rather than solid, which is what keeps a line between two
+ * instrument marks reading as a *reading* rather than as a drawn edge.
+ */
+.links {
+  pointer-events: none;
+}
+
+/*
+ * ТЗ §19 — the mesh cannot arrive before the things it connects.
+ *
+ * The lines have no wake of their own otherwise: their opacity is written
+ * by the pointer field frame by frame, so without this they were on screen
+ * at full strength while the markers at both ends were still scaled to
+ * nothing — a diagram of a constellation with no stars in it. It fades up
+ * across the back half of the marker stagger, so the mesh assembles as the
+ * nodes appear rather than after them.
+ *
+ * Opacity on the group, which multiplies with each line's own — so the
+ * pointer field keeps full control of the individual lines throughout.
+ */
+.linksWake {
+  animation: links-wake 520ms var(--boot-ease, ease-out) backwards;
+}
+
+@keyframes links-wake {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.link {
+  stroke: var(--color-accent-cool, #5fb6d8);
+  stroke-width: 0.14;
+  stroke-dasharray: 0.9 1.1;
+  opacity: 0.18;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * The signals are decoration, so with motion off they simply stop —
+   * held at the middle of their own pulse rather than at either end, which
+   * keeps the layer looking like the same layer. The pointer field declines
+   * to start at all (`prefersReducedMotion` in the component), so nothing
+   * writes a transform over this either.
+   */
+  .wake,
+  .pulse {
+    animation: none;
+    opacity: 0.42;
+  }
+
+  .linksWake {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px), (hover: none) and (pointer: coarse) {
+  .pulse {
+    animation: none;
+    opacity: 0.42;
+  }
+}

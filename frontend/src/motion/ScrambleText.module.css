@@ -1,0 +1,56 @@
+/*
+ * The measuring frame. `inline-block` so it takes the ghost's width, and
+ * positioned so the live layer has something to be absolute against.
+ */
+.frame {
+  position: relative;
+  display: inline-block;
+}
+
+/*
+ * `visibility: hidden`, not `opacity: 0` and not `display: none`: it has to
+ * keep its box (that is its whole job) while painting nothing and staying
+ * out of the accessibility tree.
+ */
+.ghost {
+  visibility: hidden;
+}
+
+/*
+ * The noise, painted over the ghost and taking no space of its own.
+ *
+ * Centred on the ghost rather than stretched to it, which matters because
+ * a frame of noise is usually *wider* than the answer: the block glyphs in
+ * the pool are close to an em each where a capital is about 0.7. Sized to
+ * the ghost's box the surplus had nowhere to go and the last character was
+ * sliced off by the clip — which reads as a rendering fault, not as a
+ * decode.
+ *
+ * `width: max-content` lets each frame be exactly as wide as it needs, and
+ * the translate keeps its centre on the ghost's centre, so the overspill is
+ * even on both sides and the string appears to breathe around its final
+ * position while it settles. Nothing is clipped, and nothing is ever more
+ * than a few per cent out of place.
+ */
+.live {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  white-space: pre;
+  /*
+   * The ink, with an escape hatch for one specific and easily-missed case.
+   *
+   * This layer is out of flow, and a host that paints its text by clipping
+   * a gradient to it (`background-clip: text` with `color: transparent` —
+   * the AEGYLAX wordmark does exactly that) cannot clip to glyphs painted
+   * in a different phase. Such a host inherits `transparent` down here and
+   * the decode renders as nothing at all: no error, no warning, just an
+   * invisible animation.
+   *
+   * `--scramble-ink` lets that host say what the noise should be painted
+   * in. Everything else inherits its colour as normal and never sets it.
+   */
+  color: var(--scramble-ink, currentColor);
+}

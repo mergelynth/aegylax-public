@@ -1,0 +1,110 @@
+/*
+ * The instrument, drawn around the character — see `InterceptOverlay.tsx`
+ * for what each piece is and `CipherTitle.module.css` for the paint on the
+ * character itself.
+ *
+ * Three colours and they are the map's, not this file's invention: cyan is
+ * the interface doing the work (the reticle, the interceptor's own trail),
+ * white is the moment of contact, green is a point that has been defended.
+ * Red never appears out here — the threat is *in* the letter, and the
+ * instrument is what closes on it.
+ */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* The bloom, the ring and the run all reach past the heading's box on
+     purpose: a hit on a dark scene is read by how far the light gets. */
+  overflow: visible;
+}
+
+/*
+ * One half of the reticle. Three borders rather than four, which is what
+ * makes it a bracket instead of a box — the character stays open on the
+ * side the interceptor comes in from, and a closed box around a letter in a
+ * headline reads as a form field.
+ */
+.bracket {
+  position: absolute;
+  border-top: 1.5px solid var(--color-accent);
+  border-bottom: 1.5px solid var(--color-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  will-change: transform, opacity;
+}
+
+.left {
+  border-left: 1.5px solid var(--color-accent);
+}
+
+.right {
+  border-right: 1.5px solid var(--color-accent);
+}
+
+/*
+ * The interceptor's run: a hairline whose head is the only bright part of
+ * it, trailing off behind. The element is as long as the distance it has to
+ * cover — Motion slides it in by its own width — so the trail is always in
+ * proportion to the run rather than a fixed length that looks like a dash
+ * on a short crossing and a smear on a long one.
+ *
+ * `translateY(-50%)` is on the element rather than in the animation because
+ * Motion owns the transform while the run plays; this one is the gradient's
+ * own vertical centring and never changes.
+ */
+.run {
+  position: absolute;
+  height: 1.5px;
+  margin-top: -0.75px;
+  border-radius: 2px;
+  will-change: transform;
+}
+
+.inbound {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-accent) 25%, transparent) 62%,
+    var(--color-accent) 93%,
+    #ffffff 100%
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+.inboundFlipped {
+  background: linear-gradient(
+    270deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-accent) 25%, transparent) 62%,
+    var(--color-accent) 93%,
+    #ffffff 100%
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+/*
+ * The impact, leaving. It is the only circle in the hero, and it is drawn in
+ * the ink the map uses for a defended point — the same event at headline
+ * size.
+ */
+.ring {
+  position: absolute;
+  border: 1.5px solid var(--color-success);
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--color-success) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--color-success) 35%, transparent);
+  will-change: transform, opacity;
+}
+
+/*
+ * `useInterceptPass` already declines to run at all under reduced motion, so
+ * nothing here is normally reachable. It is here because this layer belongs
+ * to the one loop in the product that never ends, and a loop that never ends
+ * is worth stopping twice.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+}

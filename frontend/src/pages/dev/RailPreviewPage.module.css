@@ -1,0 +1,46 @@
+.strip {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 20;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+  max-width: min(720px, 92vw);
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #05080bcc;
+  border: 1px solid #ffffff14;
+  border-radius: 8px;
+}
+
+.strip a {
+  color: #9aa7ad;
+  text-decoration: none;
+}
+
+.strip a[data-active='true'] {
+  color: #f4fffe;
+}
+
+/* The recon preview's own line: what the picture below is made of. */
+.readout {
+  position: absolute;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  z-index: 6;
+  margin: 0;
+  max-width: min(90vw, 900px);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+  text-shadow: 0 1px 10px #000000cc;
+  pointer-events: none;
+}
