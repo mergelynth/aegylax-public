@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { SOCIAL_X_URL, SOURCE_REPOSITORY_URL } from '../../config/gameConfig'
+import { useProtocolStatus, type ProtocolStatusLevel } from '../../hooks/useProtocolStatus'
+import { useBootEntrance } from '../../motion/useBootEntrance'
 import { formatBlockNumber, formatEth, shortenHex } from '../../utils/format'
 import { ExplorerLink } from '../common/ExplorerLink'
-import { useBootEntrance } from '../../motion/useBootEntrance'
-import { useProtocolStatus, type ProtocolStatusLevel } from '../../hooks/useProtocolStatus'
 import { ProtocolShieldIcon } from '../stats/StatusIcons'
 import styles from './ProtocolStatus.module.css'
 
@@ -284,7 +284,7 @@ export function ProtocolStatus() {
               aria-label="@aegylax on X"
             >
               <XIcon className={styles.repoIcon} aria-hidden="true" />
-              <span>@aegylax</span>
+              <span>aegylax</span>
             </a>
             <a
               className={styles.repoLink}
@@ -294,7 +294,7 @@ export function ProtocolStatus() {
               aria-label="@mergelynth on GitHub"
             >
               <GithubIcon className={styles.repoIcon} aria-hidden="true" />
-              <span>@mergelynth</span>
+              <span>mergelynth</span>
             </a>
           </span>
         </span>
