@@ -32,10 +32,8 @@ Private keys live only in gitignored `contracts/.env` on the machine that
 deploys. They must never be committed, pasted into a build or hosting
 environment, or passed as `VITE_*`.
 
-The backend's keeper and faucet keys are the exception, and a known weakness:
-they are read from the process environment, so they exist in a hosting
-dashboard as well as on chain. Moving both behind a signer that holds no key —
-and removing the faucet's hot wallet altogether — is
+The keeper and faucet keys are the exception: the backend reads them from its
+process environment. Moving them behind a signer that holds no key is
 [README — Signing and key custody](README.md#signing-and-key-custody).
 
 The `devkey` auth adapter reads a private key from the query string. It is

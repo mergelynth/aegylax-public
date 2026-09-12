@@ -236,59 +236,18 @@ What is safe to commit, SPA rewrites, and mainnet caveats:
 
 ### Signing and key custody
 
-Everything the project sends today is signed by a raw private key read out of
-the environment: `DEPLOYER_PRIVATE_KEY` in `tools/chain/deploy.mjs`,
-`KEEPER_PRIVATE_KEY` and `FAUCET_EVM_PRIVATE_KEY` in
-`api/config/configuration.ts`. That means one copy of each key in a hosting
-dashboard, one in a local `.env`, no audit trail on use, and no revocation
-short of rotating the wallet. The seam is narrow — `ChainService.walletFor()`
-is the only place the backend turns a key into a signer — so most of this work
-is about what sits behind that one function.
-
-- **A signer interface instead of a key.** `walletFor(privateKey)` becomes an
-  account the service is handed rather than one it derives: viem's
-  `toAccount({ address, signTransaction, signTypedData })` is all `trySend`
-  needs, and every option below is then an implementation of that, not a
-  rewrite.
-- **Remote signing, key never in the process.** The key is generated inside and
-  never leaves a KMS/HSM or a signing service — AWS/GCP KMS secp256k1, Turnkey,
-  Privy server wallets, Fireblocks, OpenZeppelin Relayer. The API then holds a
-  workload identity, not a secret; a compromised container can request a
-  signature while it runs but cannot carry away the ability to sign. Privy is
-  already a dependency for player auth, which makes its server wallets the
-  cheapest first move.
-- **Policy at the signer, not only in the contract.** Whatever signs should
-  refuse anything that is not this `chainId` plus the deployed proxy plus the
-  few selectors the keeper actually calls. A leaked ability to sign is then an
-  ability to advance the game, not to move value.
-- **Scoped session keys for the keeper** — the same restriction enforced on
-  chain (ERC-4337 with a permissions module, or a Safe module) and with an
-  expiry, so a stolen key also stops working on its own.
-- **No hot key for the faucet at all.** A paymaster sponsoring a new player's
-  first transactions, or a drip contract funded once from cold, removes the one
-  project-side wallet that holds spendable balance. A sponsorship cap is a
-  deposit, not a key.
-- **Reveals paid for rather than staffed.** `revealAndResolve` is already
-  permissionless; a tip out of the pool for whoever lands it makes our keeper a
-  backstop instead of a single point of failure — and a backstop can be a
-  third-party automation network (Gelato, Chainlink Automation) holding no key
-  of ours.
-- **Hardware wallet or encrypted keystore for deploys.** `deploy.mjs` should
-  accept a Ledger or a passphrase-encrypted keystore and drop
-  `DEPLOYER_PRIVATE_KEY` from `contracts/.env` entirely; with the timelock and
-  multisig owner below, the deploy key ends up owning nothing worth stealing.
-- **Secrets-manager fetch as the interim step.** While a raw key still has to
-  exist, load it at boot from a secrets manager or a mounted secret file under a
-  workload identity, so it is out of `process.env` and out of the dashboard,
-  rotated in one place, and read under an audit log.
-- **Fail closed once migrated.** Production boot should refuse to start if a
-  `*_PRIVATE_KEY` is set at all, and CI should reject a 32-byte hex literal in
-  any committed file or build environment. That guard is what stops the old path
-  from quietly coming back.
-- **Rotation as a written procedure.** A key inventory (who holds what, which
-  wallet owns which power), how a keeper or faucet wallet is replaced without
-  downtime, and alerts on both a falling balance and a signature the policy
-  refused.
+- Sign from a remote signer instead of a key in the environment — a KMS/HSM or
+  a signing service behind `ChainService.walletFor()`, with its policy limited
+  to this chain, this proxy, and the selectors the keeper actually calls.
+- A scoped, expiring session key for the keeper (ERC-4337 permissions module or
+  a Safe module), so the same limit is enforced on chain.
+- No hot wallet for the faucet: sponsor a new player's first transactions, or
+  drip from a contract funded once, rather than hold a spendable balance.
+- A tip for whoever lands `revealAndResolve`, which is already permissionless,
+  so a keeper is a backstop rather than a dependency.
+- Hardware wallet or an encrypted keystore for deploys and owner calls, and a
+  CI check that refuses a private key in any committed file or build
+  environment.
 
 ### Base mainnet
 
